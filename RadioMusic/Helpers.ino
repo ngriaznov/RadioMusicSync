@@ -2,7 +2,7 @@
 // SCAN SD DIRECTORIES INTO ARRAYS //////
 /////////////////////////////////////////
 void scanDirectory(File dir, int numTabs) {
-  while(true) {
+  while (true) {
     File entry =  dir.openNextFile();
     if (! entry) {
       // no more files
@@ -10,35 +10,48 @@ void scanDirectory(File dir, int numTabs) {
     }
     String fileName = entry.name();
 
-    if (fileName.endsWith(FILE_TYPE) && fileName.startsWith("_") == 0){
+    if (fileName.endsWith(FILE_TYPE) && fileName.startsWith("_") == 0 && fileName.startsWith("COPY_") == 0) {
       int intCurrentDirectory = CURRENT_DIRECTORY.toInt();
-      if (intCurrentDirectory > ACTIVE_BANKS) ACTIVE_BANKS = intCurrentDirectory; 
+      if (intCurrentDirectory > ACTIVE_BANKS) ACTIVE_BANKS = intCurrentDirectory;
       FILE_NAMES[intCurrentDirectory][FILE_COUNT[intCurrentDirectory]] = entry.name();
       FILE_SIZES[intCurrentDirectory][FILE_COUNT[intCurrentDirectory]] = entry.size();
       FILE_DIRECTORIES[intCurrentDirectory][FILE_COUNT[intCurrentDirectory]] = CURRENT_DIRECTORY;
       FILE_COUNT[intCurrentDirectory]++;
     };
-    // Ignore OSX Spotlight and Trash Directories 
+    // Ignore OSX Spotlight and Trash Directories
     if (entry.isDirectory() && fileName.startsWith("SPOTL") == 0 && fileName.startsWith("TRASH") == 0) {
       CURRENT_DIRECTORY = entry.name();
-      scanDirectory(entry, numTabs+1);
-    } 
+      scanDirectory(entry, numTabs + 1);
+    }
     entry.close();
   }
 }
 
 
-// TAKE BANK AND CHANNEL AND RETURN PROPERLY FORMATTED PATH TO THE FILE 
-char* buildPath (int bank, int channel){
- String liveFilename = bank;  
+// TAKE BANK AND CHANNEL AND RETURN PROPERLY FORMATTED PATH TO THE FILE
+char* buildPath (int bank, int channel) {
+  String liveFilename = "";
+  liveFilename += bank;
   liveFilename += "/";
   liveFilename += FILE_NAMES[bank][channel];
-  char filename[18];
-  liveFilename.toCharArray(filename, 17);
+  Serial.println(liveFilename);
+  char filename[liveFilename.length()+1];
+  liveFilename.toCharArray(filename, sizeof(filename));
   return filename;
 }
 
-void reBoot(){
+char* buildSecondPath (int bank, int channel) {
+  String liveFilename = "CACHE/";
+  liveFilename += bank;
+  liveFilename += "/";
+  liveFilename += FILE_NAMES[bank][channel];
+  Serial.println(liveFilename);
+  char filename[liveFilename.length()+1];
+  liveFilename.toCharArray(filename, sizeof(filename));
+  return filename;
+}
+
+void reBoot() {
   delay (500);
   WRITE_RESTART(0x5FA0004);
 }
@@ -48,41 +61,47 @@ void reBoot(){
 ////////VARIOUS DEBUG DISPLAY FUNCTIONS //////
 //////////////////////////////////////////////
 
-// SHOW VISUAL INDICATOR OF TRACK PROGRESS IN SERIAL MONITOR 
-void playDisplay(){
-  int position = (playRaw1.fileOffset() %  FILE_SIZES[PLAY_BANK][PLAY_CHANNEL]) >> 21;
-  int size = FILE_SIZES[PLAY_BANK][PLAY_CHANNEL] >> 21;
-  for (int i = 0; i < size; i++){
-    if (i == position) Serial.print("|");
-    else Serial.print("_");
-  }
-  Serial.println("");
-}
-
-
-// SHOW CURRENTLY PLAYING TRACK IN SERIAL MONITOR 
-void whatsPlaying (){
+// SHOW CURRENTLY PLAYING TRACK IN SERIAL MONITOR
+void whatsPlaying () {
   Serial.print("Bank:");
   Serial.print(PLAY_BANK);
   Serial.print(" Channel:");
-  Serial.print(PLAY_CHANNEL);  
-  Serial.print(" File:");  
-  Serial.println (charFilename); 
+  Serial.print(PLAY_CHANNEL);
+  Serial.print(" File:");
+  Serial.println(charFilename);
+}
+
+void printClockRecieve () {
+  Serial.println("CLOCK RECIEVE");
+  Serial.println(PLAY_POSITION);
+}
+
+void printResetChanged () {
+  Serial.println("RESET RECIEVE");
+  Serial.println(PLAY_POSITION);
+}
+
+void printReboot () {
+  Serial.println("REBOOT");
+}
+
+void printRestartPlaying(){
+  Serial.println("RESTART");
 }
 
 
-void printFileList(){
+void printFileList() {
 
-  for (int x = 0; x < BANKS; x++){ 
+  for (int x = 0; x < BANKS; x++) {
     Serial.print("Bank: ");
     Serial.println(x);
 
     Serial.print (FILE_COUNT[x]);
     Serial.print(" ");
     Serial.print (FILE_TYPE);
-    Serial.println(" Files found"); 
+    Serial.println(" Files found");
 
-    for (int i = 0; i < FILE_COUNT[x]; i++){
+    for (int i = 0; i < FILE_COUNT[x]; i++) {
       Serial.print (i);
       Serial.print (") ");
       Serial.print (FILE_DIRECTORIES[x][i]);
@@ -96,7 +115,7 @@ void printFileList(){
 }
 
 
-void printSettings(){
+void printSettings() {
   Serial.print("MUTE=");
   Serial.println(MUTE);
   Serial.print("DECLICK=");
@@ -123,24 +142,24 @@ void printSettings(){
 
 
 
-// DISPLAY PEAK METER IN LEDS 
-void peakMeter(){
+// DISPLAY PEAK METER IN LEDS
+void peakMeter() {
   if (peak1.available()) {
     fps = 0;
     float peakReading = peak1.read();
     int monoPeak = round ( peakReading * 4);
-    monoPeak = round (pow(2,monoPeak));
-    ledWrite(monoPeak-1); // 
+    monoPeak = round (pow(2, monoPeak));
+    ledWrite(monoPeak - 1); //
   }
 }
 
 
-// WRITE A 4 DIGIT BINARY NUMBER TO LED0-LED3 
-void ledWrite(int n){
+// WRITE A 4 DIGIT BINARY NUMBER TO LED0-LED3
+void ledWrite(int n) {
   digitalWrite(LED0, HIGH && (n & B00001000));
   digitalWrite(LED1, HIGH && (n & B00000100));
   digitalWrite(LED2, HIGH && (n & B00000010));
-  digitalWrite(LED3, HIGH && (n & B00000001)); 
+  digitalWrite(LED3, HIGH && (n & B00000001));
 }
 
 
@@ -155,7 +174,7 @@ void ledWrite(int n){
 
 
 
-void readSDSettings(){
+void readSDSettings() {
   char character;
   String settingName;
   String settingValue;
@@ -163,24 +182,24 @@ void readSDSettings(){
   if (settingsFile) {
     while (settingsFile.available()) {
       character = settingsFile.read();
-      while(character != '='){
+      while (character != '=') {
         settingName = settingName + character;
         character = settingsFile.read();
       }
       character = settingsFile.read();
-      while(character != '\n'){
+      while (character != '\n') {
         settingValue = settingValue + character;
         character = settingsFile.read();
-        if(character == '\n'){
+        if (character == '\n') {
           /*
-          //Debuuging Printing
-           Serial.print("Name:");
-           Serial.println(settingName);
-           Serial.print("Value :");
-           Serial.println(settingValue);
-           */
+            //Debuuging Printing
+            Serial.print("Name:");
+            Serial.println(settingName);
+            Serial.print("Value :");
+            Serial.println(settingValue);
+          */
           // Apply the value to the parameter
-          applySetting(settingName,settingValue);
+          applySetting(settingName, settingValue);
           // Reset Strings
           settingName = "";
           settingValue = "";
@@ -189,63 +208,63 @@ void readSDSettings(){
     }
     // close the file:
     settingsFile.close();
-  } 
+  }
   else {
     // if the file didn't open, print an error:
     Serial.println("error opening settings.txt");
   }
 }
 /* Apply the value to the parameter by searching for the parameter name
- Using String.toInt(); for Integers
- toFloat(string); for Float
- toBoolean(string); for Boolean
- */
+  Using String.toInt(); for Integers
+  toFloat(string); for Float
+  toBoolean(string); for Boolean
+*/
 void applySetting(String settingName, String settingValue) {
 
-  if(settingName == "MUTE") {
-    MUTE=toBoolean(settingValue);
+  if (settingName == "MUTE") {
+    MUTE = toBoolean(settingValue);
   }
 
-  if(settingName == "DECLICK") {
-    DECLICK=settingValue.toInt();
+  if (settingName == "DECLICK") {
+    DECLICK = settingValue.toInt();
   }
 
-  if(settingName == "ShowMeter") {
-    ShowMeter=toBoolean(settingValue);
+  if (settingName == "ShowMeter") {
+    ShowMeter = toBoolean(settingValue);
   }
 
-  if(settingName == "meterHIDE") {
-    meterHIDE=settingValue.toInt();
+  if (settingName == "meterHIDE") {
+    meterHIDE = settingValue.toInt();
   }
 
-  if(settingName == "ChanPotImmediate") {
-    ChanPotImmediate=toBoolean(settingValue);
+  if (settingName == "ChanPotImmediate") {
+    ChanPotImmediate = toBoolean(settingValue);
   }
 
-  if(settingName == "ChanCVImmediate") {
-    ChanCVImmediate=toBoolean(settingValue);
+  if (settingName == "ChanCVImmediate") {
+    ChanCVImmediate = toBoolean(settingValue);
   }
 
-  if(settingName == "StartPotImmediate") {
-    StartPotImmediate=toBoolean(settingValue);
+  if (settingName == "StartPotImmediate") {
+    StartPotImmediate = toBoolean(settingValue);
   }
 
-  if(settingName == "StartCVImmediate") {
-    StartCVImmediate=toBoolean(settingValue);
+  if (settingName == "StartCVImmediate") {
+    StartCVImmediate = toBoolean(settingValue);
   }
 
-  if(settingName == "StartCVDivider") {
-    StartCVDivider=settingValue.toInt();;
+  if (settingName == "StartCVDivider") {
+    StartCVDivider = settingValue.toInt();;
   }
 
-  if(settingName == "Looping") {
-    Looping=toBoolean(settingValue);
+  if (settingName == "Looping") {
+    Looping = toBoolean(settingValue);
   }
 
 
 }
 // converting string to Float
-float toFloat(String settingValue){
+float toFloat(String settingValue) {
   char floatbuf[settingValue.length()];
   settingValue.toCharArray(floatbuf, sizeof(floatbuf));
   float f = atof(floatbuf);
@@ -255,9 +274,9 @@ float toFloat(String settingValue){
 // 1 = true
 // 0 = false
 boolean toBoolean(String settingValue) {
-  if(settingValue.toInt()==1){
+  if (settingValue.toInt() == 1) {
     return true;
-  } 
+  }
   else {
     return false;
   }
@@ -265,7 +284,7 @@ boolean toBoolean(String settingValue) {
 // Writes A Configuration file
 void writeSDSettings() {
   // Delete the old One
-  SD.remove("settings.txt");
+  //SD.remove("settings.txt");
   // Create new one
   settingsFile = SD.open("settings.txt", FILE_WRITE);
   // writing in the file works just like regular print()/println() function
@@ -297,15 +316,3 @@ void writeSDSettings() {
   settingsFile.close();
   //Serial.println("Writing done.");
 }
-
-
-
-
-
-
-
-
-
-
-
-

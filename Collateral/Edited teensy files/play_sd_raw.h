@@ -37,6 +37,7 @@ public:
 	void begin(void);
 	bool play(const char *filename);
 	bool playFrom(const char *filename, unsigned long start);
+	bool playFrom(unsigned long start);
 	void stop(void);
 	bool isPlaying(void) { return playing; }
 	uint32_t positionMillis(void);

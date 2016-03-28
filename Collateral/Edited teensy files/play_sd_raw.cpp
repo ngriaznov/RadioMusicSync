@@ -69,14 +69,26 @@ Serial.println("NO: unable to open file");
 	rawfile.seek(startPoint % file_size);
 	file_offset = startPoint;
 
-Serial.println("YES: able to open file");
 	playing = true;
 	return true;
 }
 
+bool AudioPlaySdRaw::playFrom(unsigned long startPoint)
+{
+	AudioStartUsingSPI();
 
+	if (!rawfile) {
+		Serial.println("NO: unable to open file");
+		return false;
+	}
 
+	file_size = rawfile.size();
+	rawfile.seek(startPoint % file_size);
+	file_offset = startPoint;
 
+	playing = true;
+	return true;
+}
 
 void AudioPlaySdRaw::stop(void)
 {
@@ -108,21 +120,21 @@ void AudioPlaySdRaw::update(void)
 		// we can read more data from the file...
 		n = rawfile.read(block->data, AUDIO_BLOCK_SAMPLES*2);
 
-// Normal read = 256 bytes, if not normal, return 
-// ADD THIS SECTION TO ENABLE HOT SWAPPING 
+// Normal read = 256 bytes, if not normal, return
+// ADD THIS SECTION TO ENABLE HOT SWAPPING
 if (n > 256) {
 Serial.print("n =");
 Serial.println(n);
 		rawfile.close();
 		AudioStopUsingSPI();
 		playing = false;
-		failed = true; 
+		failed = true;
 return;
 };
 // END OF NEW HOT SWAP SECTION
 
 		file_offset += n;
-        failed = false; 
+        failed = false;
 		for (i=n/2; i < AUDIO_BLOCK_SAMPLES; i++) {
 			block->data[i] = 0;
 		}
@@ -151,4 +163,3 @@ uint32_t AudioPlaySdRaw::fileOffset(void)
 {
 	return file_offset;
 }
-

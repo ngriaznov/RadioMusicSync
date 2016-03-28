@@ -16,7 +16,7 @@ void checkInterface(){
 
   for (int i = 0; i < sampleAverage; i++){
     chanPot += analogRead(CHAN_POT_PIN); 
-    chanCV += analogRead(CHAN_CV_PIN); 
+    //chanCV += analogRead(CHAN_CV_PIN); 
     timPot += analogRead(TIME_POT_PIN); 
     timCV += analogRead(TIME_CV_PIN); 
   }
@@ -59,7 +59,7 @@ void checkInterface(){
     NEXT_CHANNEL = channel; 
     CHAN_CHANGED = ChanCVImmediate;
     chanCVOld = chanCV;
-  };
+   };
 
   if (timPotChange){
     playhead = time;
@@ -72,14 +72,6 @@ void checkInterface(){
     RESET_CHANGED =  StartCVImmediate;
     timCVOld = timCV;
   }
-
-
-
-
-
-
-
-
 
   // Reset Button & CV 
   if ( resetSwitch.update() )  RESET_CHANGED = resetSwitch.read();

@@ -51,12 +51,13 @@
  */
 
 #include "SD.h"
+#ifndef __SD_t3_H__
 
 // Used by `getNextPathComponent`
 #define MAX_COMPONENT_LEN 12 // What is max length?
 #define PATH_COMPONENT_BUFFER_LEN MAX_COMPONENT_LEN+1
 
-bool getNextPathComponent(char *path, unsigned int *p_offset,
+bool getNextPathComponent(const char *path, unsigned int *p_offset,
 			  char *buffer) {
   /*
 
@@ -115,7 +116,7 @@ bool getNextPathComponent(char *path, unsigned int *p_offset,
 
 
 
-boolean walkPath(char *filepath, SdFile& parentDir,
+boolean walkPath(const char *filepath, SdFile& parentDir,
 		 boolean (*callback)(SdFile& parentDir,
 				     char *filePathComponent,
 				     boolean isLastComponent,
@@ -340,8 +341,6 @@ boolean SDClass::begin(uint8_t csPin) {
     Return true if initialization succeeds, false otherwise.
 
    */
-    if (root.isOpen()) root.close();      // allows repeated calls
-
   return card.init(SPI_HALF_SPEED, csPin) &&
          volume.init(card) &&
          root.openRoot(volume);
@@ -352,8 +351,10 @@ boolean SDClass::begin(uint8_t csPin) {
 // this little helper is used to traverse paths
 SdFile SDClass::getParentDir(const char *filepath, int *index) {
   // get parent directory
-  SdFile d1 = root; // start with the mostparent, root!
+  SdFile d1;
   SdFile d2;
+
+  d1.openRoot(volume); // start with the mostparent, root!
 
   // we'll use the pointers to swap between the two objects
   SdFile *parent = &d1;
@@ -450,20 +451,11 @@ File SDClass::open(const char *filepath, uint8_t mode) {
   if (!parentdir.isOpen())
     return File();
 
-  // there is a special case for the Root directory since its a static dir
-  if (parentdir.isRoot()) {
-    if ( ! file.open(SD.root, filepath, mode)) {
-      // failed to open the file :(
-      return File();
-    }
-    // dont close the root!
-  } else {
-    if ( ! file.open(parentdir, filepath, mode)) {
-      return File();
-    }
-    // close the parent
-    parentdir.close();
+  if ( ! file.open(parentdir, filepath, mode)) {
+    return File();
   }
+  // close the parent
+  parentdir.close();
 
   if (mode & (O_APPEND | O_WRITE)) 
     file.seekSet(file.fileSize());
@@ -517,7 +509,7 @@ File SDClass::open(char *filepath, uint8_t mode) {
 //}
 
 
-boolean SDClass::exists(char *filepath) {
+boolean SDClass::exists(const char *filepath) {
   /*
 
      Returns true if the supplied file path exists.
@@ -538,7 +530,7 @@ boolean SDClass::exists(char *filepath) {
 //}
 
 
-boolean SDClass::mkdir(char *filepath) {
+boolean SDClass::mkdir(const char *filepath) {
   /*
   
     Makes a single directory or a heirarchy of directories.
@@ -549,7 +541,7 @@ boolean SDClass::mkdir(char *filepath) {
   return walkPath(filepath, root, callback_makeDirPath);
 }
 
-boolean SDClass::rmdir(char *filepath) {
+boolean SDClass::rmdir(const char *filepath) {
   /*
   
     Makes a single directory or a heirarchy of directories.
@@ -560,14 +552,9 @@ boolean SDClass::rmdir(char *filepath) {
   return walkPath(filepath, root, callback_rmdir);
 }
 
-boolean SDClass::remove(char *filepath) {
+boolean SDClass::remove(const char *filepath) {
   return walkPath(filepath, root, callback_remove);
 }
-
-
-
-
-
 
 
 // allows you to recurse into a directory
@@ -621,3 +608,4 @@ void File::rewindDirectory(void) {
 }
 
 SDClass SD;
+#endif
