@@ -87,7 +87,7 @@ unsigned long FILE_SIZES[BANKS][MAX_FILES];
 int FILE_COUNT[BANKS];
 String CURRENT_DIRECTORY = "0";
 File root;
-#define BLOCK_SIZE 2 // size of blocks to read - must be more than 1, performance might improve with 16?
+#define BLOCK_SIZE 8 // size of blocks to read - must be more than 1, performance might improve with 16?
 
 // SETUP VARS TO STORE CONTROLS
 #define CHAN_POT_PIN A9 // pin for Channel pot
@@ -188,17 +188,12 @@ void setup() {
     }
   }
 
-
-  mixer.gain(0, 0.9);
-  mixer.gain(1, 0.9);
-
   // READ SETTINGS FROM SD CARD
   root = SD.open("/");
 
   if (SD.exists("settings.txt")) {
     readSDSettings();
   }
-
   else {
     writeSDSettings();
   };
@@ -220,6 +215,8 @@ void setup() {
   // Add an interrupt on the RESET_CV pin to catch rising edges
   attachInterrupt(RESET_CV, resetcv, RISING);
   attachInterrupt(CHAN_CV_PIN, clockrecieve, RISING);
+
+  fade1.fadeOut(10);
 }
 
 // Called by interrupt on rising edge, for RESET_CV pin
@@ -244,12 +241,13 @@ void loop() {
   if (!playRaw1.isPlaying() && Looping) {
     charFilename = buildPath(PLAY_BANK, PLAY_CHANNEL);
     playRaw1.playFrom(charFilename, 0);  // change audio
+    secondCharFilename = buildSecondPath(PLAY_BANK, NEXT_CHANNEL);
+    playRaw2.playFrom(secondCharFilename, 0);  // change audio
     resetLedTimer = 0; // turn on Reset LED
 
   }
 
   if (playRaw1.failed) {
-    printReboot();
     reBoot();
   }
 
@@ -266,9 +264,10 @@ void loop() {
 
     if (RESET_CHANGED == false && Looping) playhead = playRaw1.fileOffset(); // Carry on from previous position, unless reset pressed or time selected
     playhead = (playhead / 16) * 16; // scale playhead to 16 step chunks
-    playRaw1.playFrom(charFilename, playhead);  // change audio
     
+    playRaw1.playFrom(charFilename, playhead);  // change audio
     playRaw2.playFrom(secondCharFilename, playRaw2.fileOffset());  // change audio
+    
     PLAY_POSITION = playhead;
 
     ledWrite(PLAY_BANK);
@@ -277,20 +276,17 @@ void loop() {
     resetLedTimer = 0; // turn on Reset LED
   }
 
-  if (CLOCK_CHANGED && RESET_CHANGED == false) {
+  if (CLOCK_CHANGED) {
     if (!isFading)
     {
       fade1.fadeOut(10);
       fade2.fadeIn(10);
 
-      PLAY_POSITION = PLAY_POSITION + 10176;
+      PLAY_POSITION = PLAY_POSITION + 10146;
       PLAY_POSITION = (PLAY_POSITION / 16) * 16; // scale playhead to 16 step chunks
-
-      printClockRecieve();
 
       secondCharFilename = buildSecondPath(PLAY_BANK, PLAY_CHANNEL);
       playRaw2.playFrom(secondCharFilename, PLAY_POSITION);
-
 
       fadeCompleted = 0;
       isFading = true;
@@ -298,11 +294,12 @@ void loop() {
 
     if (isFading && fadeCompleted > 10)
     {
-      PLAY_POSITION = PLAY_POSITION + 441;
+      PLAY_POSITION = PLAY_POSITION + 220;
       PLAY_POSITION = (PLAY_POSITION / 16) * 16; // scale playhead to 16 step chunks
 
       charFilename = buildPath(PLAY_BANK, PLAY_CHANNEL);
       playRaw1.playFrom(charFilename, PLAY_POSITION);
+      
       fade1.fadeIn(10);
       fade2.fadeOut(10);
 
@@ -310,10 +307,6 @@ void loop() {
       isFading = false;
       fadeCompleted = 0;
     }
-
-
-    //
-
   }
 
   //////////////////////////////////////////

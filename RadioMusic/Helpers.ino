@@ -34,18 +34,16 @@ char* buildPath (int bank, int channel) {
   liveFilename += bank;
   liveFilename += "/";
   liveFilename += FILE_NAMES[bank][channel];
-  Serial.println(liveFilename);
   char filename[liveFilename.length()+1];
   liveFilename.toCharArray(filename, sizeof(filename));
   return filename;
 }
 
 char* buildSecondPath (int bank, int channel) {
-  String liveFilename = "CACHE/";
+  String liveFilename = "C/";
   liveFilename += bank;
   liveFilename += "/";
   liveFilename += FILE_NAMES[bank][channel];
-  Serial.println(liveFilename);
   char filename[liveFilename.length()+1];
   liveFilename.toCharArray(filename, sizeof(filename));
   return filename;
@@ -70,25 +68,6 @@ void whatsPlaying () {
   Serial.print(" File:");
   Serial.println(charFilename);
 }
-
-void printClockRecieve () {
-  Serial.println("CLOCK RECIEVE");
-  Serial.println(PLAY_POSITION);
-}
-
-void printResetChanged () {
-  Serial.println("RESET RECIEVE");
-  Serial.println(PLAY_POSITION);
-}
-
-void printReboot () {
-  Serial.println("REBOOT");
-}
-
-void printRestartPlaying(){
-  Serial.println("RESTART");
-}
-
 
 void printFileList() {
 
@@ -283,8 +262,6 @@ boolean toBoolean(String settingValue) {
 }
 // Writes A Configuration file
 void writeSDSettings() {
-  // Delete the old One
-  //SD.remove("settings.txt");
   // Create new one
   settingsFile = SD.open("settings.txt", FILE_WRITE);
   // writing in the file works just like regular print()/println() function
