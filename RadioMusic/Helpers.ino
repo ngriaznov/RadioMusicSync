@@ -3,23 +3,29 @@
 /////////////////////////////////////////
 void scanDirectory(File dir, int numTabs) {
   while (true) {
-    File entry =  dir.openNextFile();
-    if (! entry) {
+    File entry = dir.openNextFile();
+    if (!entry) {
       // no more files
       break;
     }
     String fileName = entry.name();
 
-    if (fileName.endsWith(FILE_TYPE) && fileName.startsWith("_") == 0 && fileName.startsWith("COPY_") == 0) {
+    if (fileName.endsWith(FILE_TYPE) && fileName.startsWith("_") == 0 &&
+        fileName.startsWith("COPY_") == 0) {
       int intCurrentDirectory = CURRENT_DIRECTORY.toInt();
-      if (intCurrentDirectory > ACTIVE_BANKS) ACTIVE_BANKS = intCurrentDirectory;
-      FILE_NAMES[intCurrentDirectory][FILE_COUNT[intCurrentDirectory]] = entry.name();
-      FILE_SIZES[intCurrentDirectory][FILE_COUNT[intCurrentDirectory]] = entry.size();
-      FILE_DIRECTORIES[intCurrentDirectory][FILE_COUNT[intCurrentDirectory]] = CURRENT_DIRECTORY;
+      if (intCurrentDirectory > ACTIVE_BANKS)
+        ACTIVE_BANKS = intCurrentDirectory;
+      FILE_NAMES[intCurrentDirectory][FILE_COUNT[intCurrentDirectory]] =
+          entry.name();
+      FILE_SIZES[intCurrentDirectory][FILE_COUNT[intCurrentDirectory]] =
+          entry.size();
+      FILE_DIRECTORIES[intCurrentDirectory][FILE_COUNT[intCurrentDirectory]] =
+          CURRENT_DIRECTORY;
       FILE_COUNT[intCurrentDirectory]++;
     };
     // Ignore OSX Spotlight and Trash Directories
-    if (entry.isDirectory() && fileName.startsWith("SPOTL") == 0 && fileName.startsWith("TRASH") == 0) {
+    if (entry.isDirectory() && fileName.startsWith("SPOTL") == 0 &&
+        fileName.startsWith("TRASH") == 0) {
       CURRENT_DIRECTORY = entry.name();
       scanDirectory(entry, numTabs + 1);
     }
@@ -27,40 +33,38 @@ void scanDirectory(File dir, int numTabs) {
   }
 }
 
-
 // TAKE BANK AND CHANNEL AND RETURN PROPERLY FORMATTED PATH TO THE FILE
-char* buildPath (int bank, int channel) {
+char* buildPath(int bank, int channel) {
   String liveFilename = "";
   liveFilename += bank;
   liveFilename += "/";
   liveFilename += FILE_NAMES[bank][channel];
-  char filename[liveFilename.length()+1];
+  char filename[liveFilename.length() + 1];
   liveFilename.toCharArray(filename, sizeof(filename));
   return filename;
 }
 
-char* buildSecondPath (int bank, int channel) {
+char* buildSecondPath(int bank, int channel) {
   String liveFilename = "C/";
   liveFilename += bank;
   liveFilename += "/";
   liveFilename += FILE_NAMES[bank][channel];
-  char filename[liveFilename.length()+1];
+  char filename[liveFilename.length() + 1];
   liveFilename.toCharArray(filename, sizeof(filename));
   return filename;
 }
 
 void reBoot() {
-  delay (500);
+  delay(500);
   WRITE_RESTART(0x5FA0004);
 }
-
 
 //////////////////////////////////////////////
 ////////VARIOUS DEBUG DISPLAY FUNCTIONS //////
 //////////////////////////////////////////////
 
 // SHOW CURRENTLY PLAYING TRACK IN SERIAL MONITOR
-void whatsPlaying () {
+void whatsPlaying() {
   Serial.print("Bank:");
   Serial.print(PLAY_BANK);
   Serial.print(" Channel:");
@@ -70,20 +74,19 @@ void whatsPlaying () {
 }
 
 void printFileList() {
-
   for (int x = 0; x < BANKS; x++) {
     Serial.print("Bank: ");
     Serial.println(x);
 
-    Serial.print (FILE_COUNT[x]);
+    Serial.print(FILE_COUNT[x]);
     Serial.print(" ");
-    Serial.print (FILE_TYPE);
+    Serial.print(FILE_TYPE);
     Serial.println(" Files found");
 
     for (int i = 0; i < FILE_COUNT[x]; i++) {
-      Serial.print (i);
-      Serial.print (") ");
-      Serial.print (FILE_DIRECTORIES[x][i]);
+      Serial.print(i);
+      Serial.print(") ");
+      Serial.print(FILE_DIRECTORIES[x][i]);
       Serial.print(" | ");
       Serial.print(FILE_NAMES[x][i]);
       Serial.print(" | ");
@@ -92,7 +95,6 @@ void printFileList() {
     }
   }
 }
-
 
 void printSettings() {
   Serial.print("MUTE=");
@@ -113,25 +115,16 @@ void printSettings() {
   Serial.println(StartCVImmediate);
 }
 
-
-
-
-
-
-
-
-
 // DISPLAY PEAK METER IN LEDS
 void peakMeter() {
   if (peak1.available()) {
     fps = 0;
     float peakReading = peak1.read();
-    int monoPeak = round ( peakReading * 4);
-    monoPeak = round (pow(2, monoPeak));
-    ledWrite(monoPeak - 1); //
+    int monoPeak = round(peakReading * 4);
+    monoPeak = round(pow(2, monoPeak));
+    ledWrite(monoPeak - 1);  //
   }
 }
-
 
 // WRITE A 4 DIGIT BINARY NUMBER TO LED0-LED3
 void ledWrite(int n) {
@@ -141,17 +134,10 @@ void ledWrite(int n) {
   digitalWrite(LED3, HIGH && (n & B00000001));
 }
 
-
-
-
-
 //////////////////////////////////////////////
 ////READ AND WRITE SETTINGS ON THE SD CARD ///
 ////VIA http://overskill.alexshu.com/?p=107 ///
 //////////////////////////////////////////////
-
-
-
 
 void readSDSettings() {
   char character;
@@ -187,8 +173,7 @@ void readSDSettings() {
     }
     // close the file:
     settingsFile.close();
-  }
-  else {
+  } else {
     // if the file didn't open, print an error:
     Serial.println("error opening settings.txt");
   }
@@ -199,7 +184,6 @@ void readSDSettings() {
   toBoolean(string); for Boolean
 */
 void applySetting(String settingName, String settingValue) {
-
   if (settingName == "MUTE") {
     MUTE = toBoolean(settingValue);
   }
@@ -233,14 +217,13 @@ void applySetting(String settingName, String settingValue) {
   }
 
   if (settingName == "StartCVDivider") {
-    StartCVDivider = settingValue.toInt();;
+    StartCVDivider = settingValue.toInt();
+    ;
   }
 
   if (settingName == "Looping") {
     Looping = toBoolean(settingValue);
   }
-
-
 }
 // converting string to Float
 float toFloat(String settingValue) {
@@ -255,8 +238,7 @@ float toFloat(String settingValue) {
 boolean toBoolean(String settingValue) {
   if (settingValue.toInt() == 1) {
     return true;
-  }
-  else {
+  } else {
     return false;
   }
 }
@@ -286,10 +268,7 @@ void writeSDSettings() {
   settingsFile.print("Looping=");
   settingsFile.println(Looping);
 
-
-
-
   // close the file:
   settingsFile.close();
-  //Serial.println("Writing done.");
+  // Serial.println("Writing done.");
 }

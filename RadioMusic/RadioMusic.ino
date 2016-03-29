@@ -36,44 +36,44 @@
 #include <SD.h>
 #include <Wire.h>
 
-
-
 // OPTIONS TO READ FROM THE SD CARD, WITH DEFAULT VALUES
-boolean MUTE = false;                // Softens clicks when changing channel / position, at cost of speed. Fade speed is set by DECLICK
-int DECLICK = 5;                     // milliseconds of fade in/out on switching
-boolean ShowMeter = true;            // Does the VU meter appear?
-int meterHIDE = 2000;                // how long to show the meter after bank change in Milliseconds
-boolean ChanPotImmediate = true;     // Settings for Pot / CV response.
-boolean ChanCVImmediate = true;      // TRUE means it jumps directly when you move or change.
-boolean StartPotImmediate = false;   // FALSE means it only has an effect when RESET is pushed or triggered
+boolean MUTE = false;  // Softens clicks when changing channel / position, at
+                       // cost of speed. Fade speed is set by DECLICK
+int DECLICK = 5;       // milliseconds of fade in/out on switching
+boolean ShowMeter = true;  // Does the VU meter appear?
+int meterHIDE =
+    2000;  // how long to show the meter after bank change in Milliseconds
+boolean ChanPotImmediate = true;  // Settings for Pot / CV response.
+boolean ChanCVImmediate =
+    true;  // TRUE means it jumps directly when you move or change.
+boolean StartPotImmediate = false;  // FALSE means it only has an effect when
+                                    // RESET is pushed or triggered
 boolean StartCVImmediate = false;
-int StartCVDivider = 2;              // Changes sensitivity of Start control. 1 = most sensitive, 512 = lest sensitive (i.e only two points)
-boolean Looping = true;              // When a file finishes, start again from the beginning
+int StartCVDivider = 2;  // Changes sensitivity of Start control. 1 = most
+// sensitive, 512 = lest sensitive (i.e only two points)
+boolean Looping = true;  // When a file finishes, start again from the beginning
 int defaultBPM = 130;
 File settingsFile;
 
-
-
-
 // GUItool: begin automatically generated code
-AudioMixer4              mixer;
-AudioPlaySdRaw           playRaw1;       //xy=131,81
-AudioPlaySdRaw           playRaw2;       //xy=131,81
-AudioEffectFade          fade1;          //xy=257,169
-AudioEffectFade          fade2;          //xy=257,169
-AudioAnalyzePeak         peak1;          //xy=317,123
-AudioOutputAnalog        dac1;           //xy=334,98
-AudioConnection          patchCord1(playRaw1, fade1);
-AudioConnection          patchCord4(playRaw2, fade2);
-AudioConnection          patchCord7(mixer, dac1);
-AudioConnection          patchCord2(fade1, 0, mixer, 0);
-AudioConnection          patchCord6(fade2, 0, mixer, 1);
-AudioConnection          patchCord3(mixer, peak1);
+AudioMixer4 mixer;
+AudioPlaySdRaw playRaw1;  // xy=131,81
+AudioPlaySdRaw playRaw2;  // xy=131,81
+AudioEffectFade fade1;    // xy=257,169
+AudioEffectFade fade2;    // xy=257,169
+AudioAnalyzePeak peak1;   // xy=317,123
+AudioOutputAnalog dac1;   // xy=334,98
+AudioConnection patchCord1(playRaw1, fade1);
+AudioConnection patchCord4(playRaw2, fade2);
+AudioConnection patchCord7(mixer, dac1);
+AudioConnection patchCord2(fade1, 0, mixer, 0);
+AudioConnection patchCord6(fade2, 0, mixer, 1);
+AudioConnection patchCord3(mixer, peak1);
 // GUItool: end automatically generated code
 
 // REBOOT CODES
-#define RESTART_ADDR       0xE000ED0C
-#define READ_RESTART()     (*(volatile uint32_t *)RESTART_ADDR)
+#define RESTART_ADDR 0xE000ED0C
+#define READ_RESTART() (*(volatile uint32_t *)RESTART_ADDR)
 #define WRITE_RESTART(val) ((*(volatile uint32_t *)RESTART_ADDR) = (val))
 
 // SETUP VARS TO STORE DETAILS OF FILES ON THE SD CARD
@@ -81,22 +81,24 @@ AudioConnection          patchCord3(mixer, peak1);
 #define BANKS 16
 int ACTIVE_BANKS;
 String FILE_TYPE = "RAW";
-String FILE_NAMES [BANKS][MAX_FILES];
+String FILE_NAMES[BANKS][MAX_FILES];
 String FILE_DIRECTORIES[BANKS][MAX_FILES];
 unsigned long FILE_SIZES[BANKS][MAX_FILES];
 int FILE_COUNT[BANKS];
 String CURRENT_DIRECTORY = "0";
 File root;
-#define BLOCK_SIZE 8 // size of blocks to read - must be more than 1, performance might improve with 16?
+#define BLOCK_SIZE \
+  8  // size of blocks to read - must be more than 1, performance might improve
+     // with 16?
 
 // SETUP VARS TO STORE CONTROLS
-#define CHAN_POT_PIN A9 // pin for Channel pot
-#define CHAN_CV_PIN A6 // pin for Channel CV 
-#define TIME_POT_PIN A7 // pin for Time pot
-#define TIME_CV_PIN A8 // pin for Time CV
-#define RESET_BUTTON 8 // Reset button 
-#define RESET_LED 11 // Reset LED indicator 
-#define RESET_CV 9 // Reset pulse input 
+#define CHAN_POT_PIN A9  // pin for Channel pot
+#define CHAN_CV_PIN A6   // pin for Channel CV
+#define TIME_POT_PIN A7  // pin for Time pot
+#define TIME_CV_PIN A8   // pin for Time CV
+#define RESET_BUTTON 8   // Reset button
+#define RESET_LED 11     // Reset LED indicator
+#define RESET_CV 9       // Reset pulse input
 
 boolean CHAN_CHANGED = true;
 boolean RESET_CHANGED = false;
@@ -104,25 +106,26 @@ boolean CLOCK_CHANGED = false;
 unsigned long PLAY_POSITION = 0;
 int CLOCK_SKIP = 0;
 
-Bounce resetSwitch = Bounce( RESET_BUTTON, 20 ); // Bounce setup for Reset
+Bounce resetSwitch = Bounce(RESET_BUTTON, 20);  // Bounce setup for Reset
 int PLAY_CHANNEL;
 int NEXT_CHANNEL;
 unsigned long playhead;
-char* charFilename;
-char* secondCharFilename;
+char *charFilename;
+char *secondCharFilename;
 
 // BANK SWITCHER SETUP
-#define BANK_BUTTON 2 // Bank Button 
+#define BANK_BUTTON 2  // Bank Button
 #define LED0 6
 #define LED1 5
 #define LED2 4
 #define LED3 3
-Bounce bankSwitch = Bounce( BANK_BUTTON, 20 );
+Bounce bankSwitch = Bounce(BANK_BUTTON, 20);
 int PLAY_BANK = 0;
 #define BANK_SAVE 0
 
 // CHANGE HOW INTERFACE REACTS
-int chanHyst = 3; // how many steps to move before making a change (out of 1024 steps on a reading)
+int chanHyst = 3;  // how many steps to move before making a change (out of 1024
+                   // steps on a reading)
 int timHyst = 6;
 
 elapsedMillis chanChanged;
@@ -134,26 +137,27 @@ int chanPotOld;
 int chanCVOld;
 int timPotOld;
 int timCVOld;
-#define FLASHTIME 10 // How long do LEDs flash for? 
-#define HOLDTIME 400 // How many millis to hold a button to get 2ndary function? 
-elapsedMillis showDisplay; // elapsedMillis is a special variable in Teensy - increments every millisecond
-int showFreq = 250; // how many millis between serial Debug updates
+#define FLASHTIME 10  // How long do LEDs flash for?
+#define HOLDTIME \
+  400  // How many millis to hold a button to get 2ndary function?
+elapsedMillis showDisplay;  // elapsedMillis is a special variable in Teensy -
+                            // increments every millisecond
+int showFreq = 250;         // how many millis between serial Debug updates
 elapsedMillis resetLedTimer = 0;
 elapsedMillis bankTimer = 0;
-elapsedMillis checkI = 0; // check interface
-int checkFreq = 10; // how often to check the interface in Millis
+elapsedMillis checkI = 0;  // check interface
+int checkFreq = 10;        // how often to check the interface in Millis
 
 // CONTROL THE PEAK METER DISPLAY
-elapsedMillis meterDisplay; // Counter to hide MeterDisplay after bank change
-elapsedMillis fps; // COUNTER FOR PEAK METER FRAMERATE
+elapsedMillis meterDisplay;  // Counter to hide MeterDisplay after bank change
+elapsedMillis fps;           // COUNTER FOR PEAK METER FRAMERATE
 elapsedMicros fadeCompleted;
 bool isFading = false;
 
-#define peakFPS 12   //  FRAMERATE FOR PEAK METER 
+#define peakFPS 12  //  FRAMERATE FOR PEAK METER
 
 void setup() {
-
-  //PINS FOR BANK SWITCH AND LEDS
+  // PINS FOR BANK SWITCH AND LEDS
   pinMode(BANK_BUTTON, INPUT);
   pinMode(RESET_BUTTON, INPUT);
   pinMode(RESET_CV, INPUT);
@@ -183,8 +187,7 @@ void setup() {
       ledWrite(0);
       delay(100);
       crashCountdown++;
-      if (crashCountdown > 6)     reBoot();
-
+      if (crashCountdown > 6) reBoot();
     }
   }
 
@@ -196,8 +199,7 @@ void setup() {
 
   if (SD.exists("settings.txt")) {
     readSDSettings();
-  }
-  else {
+  } else {
     writeSDSettings();
   };
 
@@ -210,8 +212,7 @@ void setup() {
   if (a >= 0 && a <= ACTIVE_BANKS) {
     PLAY_BANK = a;
     CHAN_CHANGED = true;
-  }
-  else {
+  } else {
     EEPROM.write(BANK_SAVE, 0);
   };
 
@@ -223,14 +224,10 @@ void setup() {
 }
 
 // Called by interrupt on rising edge, for RESET_CV pin
-void resetcv() {
-  RESET_CHANGED = true;
-}
+void resetcv() { RESET_CHANGED = true; }
 
 // Called when station recieves clock
-void clockrecieve() {
-  CLOCK_CHANGED = true;
-}
+void clockrecieve() { CLOCK_CHANGED = true; }
 
 ////////////////////////////////////////////////////
 ///////////////MAIN LOOP//////////////////////////
@@ -246,8 +243,7 @@ void loop() {
     playRaw1.playFrom(charFilename, 0);  // change audio
     secondCharFilename = buildSecondPath(PLAY_BANK, NEXT_CHANNEL);
     playRaw2.playFrom(secondCharFilename, 0);  // change audio
-    resetLedTimer = 0; // turn on Reset LED
-
+    resetLedTimer = 0;                         // turn on Reset LED
   }
 
   if (playRaw1.failed) {
@@ -258,37 +254,36 @@ void loop() {
   ////////REACT TO ANY CHANGES /////////////
   //////////////////////////////////////////
 
-
   if (CHAN_CHANGED) {
-
     charFilename = buildPath(PLAY_BANK, NEXT_CHANNEL);
     secondCharFilename = buildSecondPath(PLAY_BANK, NEXT_CHANNEL);
     PLAY_CHANNEL = NEXT_CHANNEL;
 
-    if (RESET_CHANGED == false && Looping) playhead = playRaw1.fileOffset(); // Carry on from previous position, unless reset pressed or time selected
-    playhead = (playhead / 16) * 16; // scale playhead to 16 step chunks
-    
-    playRaw1.playFrom(charFilename, playhead);  // change audio
+    if (RESET_CHANGED == false && Looping)
+      playhead = playRaw1.fileOffset();  // Carry on from previous position,
+    // unless reset pressed or time selected
+    playhead = (playhead / 16) * 16;  // scale playhead to 16 step chunks
+
+    playRaw1.playFrom(charFilename, playhead);        // change audio
     playRaw2.playFrom(secondCharFilename, playhead);  // change audio
-    
+
     PLAY_POSITION = playhead;
 
     ledWrite(PLAY_BANK);
     CHAN_CHANGED = false;
-    resetLedTimer = 0; // turn on Reset LED
+    resetLedTimer = 0;  // turn on Reset LED
   }
 
   if (CLOCK_CHANGED || RESET_CHANGED) {
-    if (!isFading)
-    {
+    if (!isFading) {
       PLAY_POSITION = PLAY_POSITION + 10176.92;
 
-      if (RESET_CHANGED)
-      {
+      if (RESET_CHANGED) {
         PLAY_POSITION = playhead;
       }
 
-      PLAY_POSITION = (PLAY_POSITION / 16) * 16; // scale playhead to 16 step chunks
+      PLAY_POSITION =
+          (PLAY_POSITION / 16) * 16;  // scale playhead to 16 step chunks
 
       secondCharFilename = buildSecondPath(PLAY_BANK, PLAY_CHANNEL);
       playRaw2.playFrom(secondCharFilename, PLAY_POSITION);
@@ -300,15 +295,15 @@ void loop() {
       isFading = true;
     }
 
-    if (isFading && fadeCompleted >= 10000)
-    {
+    if (isFading && fadeCompleted >= 10000) {
       PLAY_POSITION = PLAY_POSITION + 441;
-     
-      PLAY_POSITION = (PLAY_POSITION / 16) * 16; // scale playhead to 16 step chunks
+
+      PLAY_POSITION =
+          (PLAY_POSITION / 16) * 16;  // scale playhead to 16 step chunks
 
       charFilename = buildPath(PLAY_BANK, PLAY_CHANNEL);
       playRaw1.playFrom(charFilename, PLAY_POSITION);
-      
+
       fade1.fadeIn(10);
       fade2.fadeOut(10);
 
@@ -335,9 +330,9 @@ void loop() {
     showDisplay = 0;
   }
 
-  digitalWrite(RESET_LED, resetLedTimer < FLASHTIME); // flash reset LED
+  digitalWrite(RESET_LED, resetLedTimer < FLASHTIME);  // flash reset LED
 
-  if (fps > 1000 / peakFPS && meterDisplay > meterHIDE && ShowMeter) peakMeter();  // CALL PEAK METER
-
-
+  if (fps > 1000 / peakFPS && meterDisplay > meterHIDE && ShowMeter)
+    peakMeter();  // CALL PEAK METER
 }
+
