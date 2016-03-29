@@ -146,7 +146,7 @@ int checkFreq = 10; // how often to check the interface in Millis
 // CONTROL THE PEAK METER DISPLAY
 elapsedMillis meterDisplay; // Counter to hide MeterDisplay after bank change
 elapsedMillis fps; // COUNTER FOR PEAK METER FRAMERATE
-elapsedMillis fadeCompleted;
+elapsedMicros fadeCompleted;
 bool isFading = false;
 
 #define peakFPS 12   //  FRAMERATE FOR PEAK METER 
@@ -279,22 +279,29 @@ void loop() {
   if (CLOCK_CHANGED) {
     if (!isFading)
     {
-      fade1.fadeOut(10);
-      fade2.fadeIn(10);
+      PLAY_POSITION = PLAY_POSITION + 10176.92;
 
-      PLAY_POSITION = PLAY_POSITION + 10146;
+      if (RESET_CHANGED)
+      {
+        PLAY_POSITION = playhead;
+      }
+
       PLAY_POSITION = (PLAY_POSITION / 16) * 16; // scale playhead to 16 step chunks
 
       secondCharFilename = buildSecondPath(PLAY_BANK, PLAY_CHANNEL);
       playRaw2.playFrom(secondCharFilename, PLAY_POSITION);
 
+      fade1.fadeOut(10);
+      fade2.fadeIn(10);
+
       fadeCompleted = 0;
       isFading = true;
     }
 
-    if (isFading && fadeCompleted > 10)
+    if (isFading && fadeCompleted >= 10000)
     {
-      PLAY_POSITION = PLAY_POSITION + 220;
+      PLAY_POSITION = PLAY_POSITION + 441;
+     
       PLAY_POSITION = (PLAY_POSITION / 16) * 16; // scale playhead to 16 step chunks
 
       charFilename = buildPath(PLAY_BANK, PLAY_CHANNEL);
