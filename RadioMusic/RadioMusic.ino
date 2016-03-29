@@ -188,6 +188,9 @@ void setup() {
     }
   }
 
+  mixer.gain(0, 0.7);
+  mixer.gain(1, 0.7);
+
   // READ SETTINGS FROM SD CARD
   root = SD.open("/");
 
@@ -256,7 +259,7 @@ void loop() {
   //////////////////////////////////////////
 
 
-  if (CHAN_CHANGED || RESET_CHANGED) {
+  if (CHAN_CHANGED) {
 
     charFilename = buildPath(PLAY_BANK, NEXT_CHANNEL);
     secondCharFilename = buildSecondPath(PLAY_BANK, NEXT_CHANNEL);
@@ -266,17 +269,16 @@ void loop() {
     playhead = (playhead / 16) * 16; // scale playhead to 16 step chunks
     
     playRaw1.playFrom(charFilename, playhead);  // change audio
-    playRaw2.playFrom(secondCharFilename, playRaw2.fileOffset());  // change audio
+    playRaw2.playFrom(secondCharFilename, playhead);  // change audio
     
     PLAY_POSITION = playhead;
 
     ledWrite(PLAY_BANK);
     CHAN_CHANGED = false;
-    RESET_CHANGED = false;
     resetLedTimer = 0; // turn on Reset LED
   }
 
-  if (CLOCK_CHANGED) {
+  if (CLOCK_CHANGED || RESET_CHANGED) {
     if (!isFading)
     {
       PLAY_POSITION = PLAY_POSITION + 10176.92;
@@ -314,6 +316,8 @@ void loop() {
       isFading = false;
       fadeCompleted = 0;
     }
+
+    RESET_CHANGED = false;
   }
 
   //////////////////////////////////////////
