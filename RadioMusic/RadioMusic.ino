@@ -26,7 +26,6 @@
 
   from:https://github.com/TomWhitwell/RadioMusic/tree/master/Collateral/Edited%20teensy%20files
 
-
 */
 
 #include <EEPROM.h>
@@ -44,15 +43,12 @@ boolean ShowMeter = true;  // Does the VU meter appear?
 int meterHIDE =
     2000;  // how long to show the meter after bank change in Milliseconds
 boolean ChanPotImmediate = true;  // Settings for Pot / CV response.
-boolean ChanCVImmediate =
-    true;  // TRUE means it jumps directly when you move or change.
-boolean StartPotImmediate = false;  // FALSE means it only has an effect when
-                                    // RESET is pushed or triggered
+boolean ChanCVImmediate = true;  // TRUE means it jumps directly when you move or change.
+boolean StartPotImmediate = false;  // FALSE means it only has an effect when RESET is pushed or triggered
 boolean StartCVImmediate = false;
-int StartCVDivider = 2;  // Changes sensitivity of Start control. 1 = most
-// sensitive, 512 = lest sensitive (i.e only two points)
+int StartCVDivider = 2;  // Changes sensitivity of Start control. 1 = most sensitive, 512 = lest sensitive (i.e only two points)
 boolean Looping = true;  // When a file finishes, start again from the beginning
-int defaultBPM = 130;
+
 File settingsFile;
 
 // GUItool: begin automatically generated code
@@ -87,8 +83,7 @@ unsigned long FILE_SIZES[BANKS][MAX_FILES];
 int FILE_COUNT[BANKS];
 String CURRENT_DIRECTORY = "0";
 File root;
-#define BLOCK_SIZE \
-  8  // size of blocks to read - must be more than 1, performance might improve
+#define BLOCK_SIZE 2  // size of blocks to read - must be more than 1, performance might improve
      // with 16?
 
 // SETUP VARS TO STORE CONTROLS
@@ -219,8 +214,6 @@ void setup() {
   // Add an interrupt on the RESET_CV pin to catch rising edges
   attachInterrupt(RESET_CV, resetcv, RISING);
   attachInterrupt(CHAN_CV_PIN, clockrecieve, RISING);
-
-  fade1.fadeOut(10);
 }
 
 // Called by interrupt on rising edge, for RESET_CV pin
@@ -276,7 +269,7 @@ void loop() {
 
   if (CLOCK_CHANGED || RESET_CHANGED) {
     if (!isFading) {
-      PLAY_POSITION = PLAY_POSITION + 10176.92;
+      PLAY_POSITION = PLAY_POSITION + 9900;
 
       if (RESET_CHANGED) {
         PLAY_POSITION = playhead;
@@ -335,4 +328,3 @@ void loop() {
   if (fps > 1000 / peakFPS && meterDisplay > meterHIDE && ShowMeter)
     peakMeter();  // CALL PEAK METER
 }
-
