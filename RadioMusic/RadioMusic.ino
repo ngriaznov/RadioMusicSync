@@ -287,7 +287,7 @@ void loop() {
     if (!isFading) {
       
       PLAY_POSITION =
-          (PLAY_POSITION / 16) * 16;  // scale playhead to 16 step chunks
+          (PLAY_POSITION / 16) * 16;  // scale to 16 step chunks
 
       secondCharFilename = buildSecondPath(PLAY_BANK, PLAY_CHANNEL);
       playRaw2.playFrom(secondCharFilename, PLAY_POSITION);
