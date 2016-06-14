@@ -63,12 +63,14 @@ void checkInterface() {
 
   if (timPotChange) {
     playhead = time;
+    currentTimePosition = time;
     RESET_CHANGED = StartPotImmediate;
     timPotOld = timPot;
   }
 
   if (timCVChange) {
     playhead = time;
+    currentTimePosition = time;
     RESET_CHANGED = StartCVImmediate;
     timCVOld = timCV;
   }

@@ -1,3 +1,12 @@
+//#include <StretchCalculator.h>
+//#include <StretcherChannelData.h>
+//#include <StretcherImpl.h>
+
+//#include <StandardCplusplus.h>
+//#include <system_configuration.h>
+//#include <unwind-cxx.h>
+//#include <utility.h>
+
 /*
   RADIO MUSIC
   https://github.com/TomWhitwell/RadioMusic
@@ -27,7 +36,6 @@
   from:https://github.com/TomWhitwell/RadioMusic/tree/master/Collateral/Edited%20teensy%20files
 
 */
-
 #include <EEPROM.h>
 #include <Bounce.h>
 #include <Audio.h>
@@ -48,6 +56,7 @@ boolean StartPotImmediate = false;  // FALSE means it only has an effect when RE
 boolean StartCVImmediate = false;
 int StartCVDivider = 2;  // Changes sensitivity of Start control. 1 = most sensitive, 512 = lest sensitive (i.e only two points)
 boolean Looping = true;  // When a file finishes, start again from the beginning
+int currentTimePosition = 0;
 
 File settingsFile;
 
@@ -147,6 +156,7 @@ int checkFreq = 10;        // how often to check the interface in Millis
 elapsedMillis meterDisplay;  // Counter to hide MeterDisplay after bank change
 elapsedMillis fps;           // COUNTER FOR PEAK METER FRAMERATE
 elapsedMicros fadeCompleted;
+elapsedMillis resetTimer;
 bool isFading = false;
 
 #define peakFPS 12  //  FRAMERATE FOR PEAK METER
@@ -254,6 +264,7 @@ void loop() {
 
     if (RESET_CHANGED == false && Looping)
       playhead = playRaw1.fileOffset();  // Carry on from previous position,
+    
     // unless reset pressed or time selected
     playhead = (playhead / 16) * 16;  // scale playhead to 16 step chunks
 
@@ -267,14 +278,14 @@ void loop() {
     resetLedTimer = 0;  // turn on Reset LED
   }
 
-  if (CLOCK_CHANGED || RESET_CHANGED) {
+  if (RESET_CHANGED){
+    PLAY_POSITION = currentTimePosition;   
+    RESET_CHANGED = false;
+  }
+  
+  if (CLOCK_CHANGED || RESET_CHANGED) { // reset timer must be more than 100 ms to count in on new clock, depends on bpm
     if (!isFading) {
-      PLAY_POSITION = PLAY_POSITION + 9900;
-
-      if (RESET_CHANGED) {
-        PLAY_POSITION = playhead;
-      }
-
+      
       PLAY_POSITION =
           (PLAY_POSITION / 16) * 16;  // scale playhead to 16 step chunks
 
@@ -289,7 +300,7 @@ void loop() {
     }
 
     if (isFading && fadeCompleted >= 10000) {
-      PLAY_POSITION = PLAY_POSITION + 441;
+      PLAY_POSITION = PLAY_POSITION + 441; // skip 10ms
 
       PLAY_POSITION =
           (PLAY_POSITION / 16) * 16;  // scale playhead to 16 step chunks
@@ -301,11 +312,11 @@ void loop() {
       fade2.fadeOut(10);
 
       CLOCK_CHANGED = false;
+      RESET_CHANGED = false;
       isFading = false;
       fadeCompleted = 0;
+      PLAY_POSITION = PLAY_POSITION + 9850; // depends on bpm
     }
-
-    RESET_CHANGED = false;
   }
 
   //////////////////////////////////////////
