@@ -1,7 +1,3 @@
-//#include <StretchCalculator.h>
-//#include <StretcherChannelData.h>
-//#include <StretcherImpl.h>
-
 //#include <StandardCplusplus.h>
 //#include <system_configuration.h>
 //#include <unwind-cxx.h>
@@ -244,9 +240,8 @@ void loop() {
   if (!playRaw1.isPlaying() && Looping) {
     charFilename = buildPath(PLAY_BANK, PLAY_CHANNEL);
     playRaw1.playFrom(charFilename, 0);  // change audio
-    secondCharFilename = buildSecondPath(PLAY_BANK, NEXT_CHANNEL);
-    playRaw2.playFrom(secondCharFilename, 0);  // change audio
-    resetLedTimer = 0;                         // turn on Reset LED
+    playRaw2.playFrom(charFilename, 0);  // change audio
+    resetLedTimer = 0;                   // turn on Reset LED
   }
 
   if (playRaw1.failed) {
@@ -259,7 +254,7 @@ void loop() {
 
   if (CHAN_CHANGED) {
     charFilename = buildPath(PLAY_BANK, NEXT_CHANNEL);
-    secondCharFilename = buildSecondPath(PLAY_BANK, NEXT_CHANNEL);
+
     PLAY_CHANNEL = NEXT_CHANNEL;
 
     if (RESET_CHANGED == false && Looping)
@@ -269,7 +264,7 @@ void loop() {
     playhead = (playhead / 16) * 16;  // scale playhead to 16 step chunks
 
     playRaw1.playFrom(charFilename, playhead);        // change audio
-    playRaw2.playFrom(secondCharFilename, playhead);  // change audio
+    playRaw2.playFrom(charFilename, playhead);  // change audio
 
     PLAY_POSITION = playhead;
 
@@ -279,7 +274,7 @@ void loop() {
   }
 
   if (RESET_CHANGED){
-    PLAY_POSITION = currentTimePosition;   
+    PLAY_POSITION = currentTimePosition;  
     RESET_CHANGED = false;
   }
   
@@ -289,8 +284,8 @@ void loop() {
       PLAY_POSITION =
           (PLAY_POSITION / 16) * 16;  // scale to 16 step chunks
 
-      secondCharFilename = buildSecondPath(PLAY_BANK, PLAY_CHANNEL);
-      playRaw2.playFrom(secondCharFilename, PLAY_POSITION);
+      charFilename = buildPath(PLAY_BANK, PLAY_CHANNEL);
+      playRaw2.playFrom(charFilename, PLAY_POSITION);
 
       fade1.fadeOut(10);
       fade2.fadeIn(10);
@@ -315,7 +310,8 @@ void loop() {
       RESET_CHANGED = false;
       isFading = false;
       fadeCompleted = 0;
-      PLAY_POSITION = PLAY_POSITION + 9850; // depends on bpm
+      PLAY_POSITION = PLAY_POSITION + 9765; // depends on bpm
+      // http://mp3.deepsound.net/eng/samples_calculs.php
     }
   }
 
