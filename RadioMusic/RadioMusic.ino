@@ -153,7 +153,7 @@ elapsedMillis meterDisplay;  // Counter to hide MeterDisplay after bank change
 elapsedMillis fps;           // COUNTER FOR PEAK METER FRAMERATE
 elapsedMicros fadeCompleted;
 elapsedMillis resetTimer;
-bool isFading = false;
+bool fadeSwitch = false;
 
 #define peakFPS 12  //  FRAMERATE FOR PEAK METER
 
@@ -279,40 +279,24 @@ void loop() {
   }
   
   if (CLOCK_CHANGED || RESET_CHANGED) { // reset timer must be more than 100 ms to count in on new clock, depends on bpm
-    if (!isFading) {
-      
-      PLAY_POSITION =
-          (PLAY_POSITION / 16) * 16;  // scale to 16 step chunks
-
-      charFilename = buildPath(PLAY_BANK, PLAY_CHANNEL);
+    charFilename = buildPath(PLAY_BANK, PLAY_CHANNEL);
+    PLAY_POSITION = (PLAY_POSITION / 16) * 16; 
+    if (fadeSwitch){            
       playRaw2.playFrom(charFilename, PLAY_POSITION);
-
       fade1.fadeOut(10);
-      fade2.fadeIn(10);
-
-      fadeCompleted = 0;
-      isFading = true;
+      fade2.fadeIn(10);          
     }
-
-    if (isFading && fadeCompleted >= 10000) {
-      PLAY_POSITION = PLAY_POSITION + 441; // skip 10ms
-
-      PLAY_POSITION =
-          (PLAY_POSITION / 16) * 16;  // scale playhead to 16 step chunks
-
-      charFilename = buildPath(PLAY_BANK, PLAY_CHANNEL);
+    else {
       playRaw1.playFrom(charFilename, PLAY_POSITION);
-
       fade1.fadeIn(10);
       fade2.fadeOut(10);
-
-      CLOCK_CHANGED = false;
-      RESET_CHANGED = false;
-      isFading = false;
-      fadeCompleted = 0;
-      PLAY_POSITION = PLAY_POSITION + 9765; // depends on bpm
-      // http://mp3.deepsound.net/eng/samples_calculs.php
     }
+
+    fadeSwitch = !fadeSwitch;
+    
+    PLAY_POSITION = PLAY_POSITION + 10176; // depends on bpm
+    CLOCK_CHANGED = false;
+    RESET_CHANGED = false;
   }
 
   //////////////////////////////////////////
@@ -335,3 +319,4 @@ void loop() {
   if (fps > 1000 / peakFPS && meterDisplay > meterHIDE && ShowMeter)
     peakMeter();  // CALL PEAK METER
 }
+
