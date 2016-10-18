@@ -70,7 +70,7 @@ void whatsPlaying() {
   Serial.print(" Channel:");
   Serial.print(PLAY_CHANNEL);
   Serial.print(" File:");
-  Serial.println(charFilename);
+  Serial.println(targetFile);
 }
 
 void printFileList() {
@@ -224,6 +224,10 @@ void applySetting(String settingName, String settingValue) {
   if (settingName == "Looping") {
     Looping = toBoolean(settingValue);
   }
+
+  if (settingName == "BPM") {
+    BPM = settingValue.toInt();
+  }
 }
 // converting string to Float
 float toFloat(String settingValue) {
@@ -267,7 +271,9 @@ void writeSDSettings() {
   settingsFile.println(StartCVDivider);
   settingsFile.print("Looping=");
   settingsFile.println(Looping);
-
+  settingsFile.print("BPM=");
+  settingsFile.println(BPM);
+  
   // close the file:
   settingsFile.close();
   // Serial.println("Writing done.");
