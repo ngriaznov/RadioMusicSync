@@ -128,6 +128,7 @@ int                         timHyst = 6;
 
 elapsedMillis               chanChanged;
 elapsedMillis               timChanged;
+elapsedMillis               clockTime;
 
 int                         sampleAverage = 40;
 int                         chanPotOld;
@@ -212,6 +213,7 @@ void setup() {
   attachInterrupt(CHAN_CV_PIN, clockrecieve, RISING);
 
   skipTransition = round(44.1 * 30000/BPM); // ((60000/BPM/4)*2 * (44100/1000))
+  clockTime = 0;
 }
 
 // Called by interrupt on rising edge, for RESET_CV pin
@@ -272,13 +274,13 @@ void loop() {
     
     if (fadeSwitch){            
       playRaw2.playFrom(targetFile, PLAY_POSITION);
-      fade1.fadeOut(10);
-      fade2.fadeIn(10);          
+      fade1.fadeOut(clockTime * 0.1);
+      fade2.fadeIn(clockTime * 0.1);          
     }
     else {
       playRaw1.playFrom(targetFile, PLAY_POSITION);
-      fade1.fadeIn(10);
-      fade2.fadeOut(10);
+      fade1.fadeIn(clockTime * 0.1);
+      fade2.fadeOut(clockTime * 0.1);
     }
 
     fadeSwitch = !fadeSwitch;
@@ -286,6 +288,7 @@ void loop() {
     PLAY_POSITION = PLAY_POSITION + skipTransition; 
     CLOCK_CHANGED = false;
     RESET_CHANGED = false;
+    clockTime = 0;
   }
 
   if (checkI >= checkFreq) {
