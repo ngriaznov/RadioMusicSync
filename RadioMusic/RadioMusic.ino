@@ -212,6 +212,9 @@ void setup() {
   attachInterrupt(RESET_CV, resetcv, RISING);
   attachInterrupt(CHAN_CV_PIN, clockrecieve, RISING);
 
+  // Silence second player for now
+  fade1.fadeOut(2);
+
   skipTransition = round(44.1 * 30000/BPM); // ((60000/BPM/4)*2 * (44100/1000))
   clockTime = 0;
 }
