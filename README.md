@@ -13,3 +13,5 @@ Usage:
 - upload audio files with tempo set to desired tempo (the one you set in settings.txt)
 
 WARNING: this is an alpha version, so please download the original firmware beforehand. There are more things to implement, so please be patient.
+
+Demo: https://vimeo.com/187965734
