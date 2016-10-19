@@ -15,3 +15,4 @@ Usage:
 WARNING: this is an alpha version, so please download the original firmware beforehand. There are more things to implement, so please be patient.
 
 Demo: https://vimeo.com/187965734
+Latest Firmware: http://www.mediafire.com/file/4hton1xd45stxga/RadioMusic.ino.hex
