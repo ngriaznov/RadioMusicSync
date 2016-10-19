@@ -110,7 +110,7 @@ boolean                     CHAN_CHANGED = true;
 boolean                     RESET_CHANGED = false;
 boolean                     CLOCK_CHANGED = false;
 unsigned long               PLAY_POSITION = 0;
-int                         CLOCK_SKIP = 0;
+unsigned long               SYNC_POSITION = 0;
 
 Bounce                      resetSwitch = Bounce(RESET_BUTTON, 20);       // Bounce setup for Reset
 int                         PLAY_CHANNEL;
@@ -227,6 +227,10 @@ void clockrecieve() {
 }
 
 void loop() {
+  if (SYNC_POSITION == 0){
+    SYNC_POSITION = currentTimePosition;
+  }
+  
   if (!playRaw1.isPlaying() && Looping) {
     targetFile = buildPath(PLAY_BANK, PLAY_CHANNEL);
     playRaw1.playFrom(targetFile, 0);
@@ -248,15 +252,11 @@ void loop() {
     PLAY_CHANNEL = NEXT_CHANNEL;
 
     if (RESET_CHANGED == false && Looping)
-      playhead = playRaw1.fileOffset();  // Carry on from previous position,
-    
-      // unless reset pressed or time selected
-      playhead = (playhead / 16) * 16;  // scale playhead to 16 step chunks
-
-      playRaw1.playFrom(targetFile, playhead);        // change audio
-      playRaw2.playFrom(targetFile, playhead);        // change audio
-
-      PLAY_POSITION = playhead;
+      PLAY_POSITION = currentTimePosition;  
+      PLAY_POSITION = (PLAY_POSITION / 16) * 16; 
+     
+      playRaw1.playFrom(targetFile, PLAY_POSITION);        // change audio
+      playRaw2.playFrom(targetFile, PLAY_POSITION);        // change audio
 
       ledWrite(PLAY_BANK);
       CHAN_CHANGED = false;
@@ -265,6 +265,7 @@ void loop() {
 
   if (RESET_CHANGED){
     PLAY_POSITION = currentTimePosition;  
+    SYNC_POSITION = PLAY_POSITION;
     RESET_CHANGED = false;
   }
   
@@ -284,8 +285,9 @@ void loop() {
     }
 
     fadeSwitch = !fadeSwitch;
+    SYNC_POSITION += skipTransition;
     
-    PLAY_POSITION = PLAY_POSITION + skipTransition; 
+    PLAY_POSITION = SYNC_POSITION; 
     CLOCK_CHANGED = false;
     RESET_CHANGED = false;
     clockTime = 0;
