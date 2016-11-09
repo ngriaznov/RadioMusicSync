@@ -118,7 +118,6 @@ int                         NEXT_CHANNEL;
 unsigned long               playhead;
 char                        *targetFile;
 
-
 Bounce                      bankSwitch = Bounce(BANK_BUTTON, 20);
 int                         PLAY_BANK = 0;
 
@@ -275,6 +274,10 @@ void loop() {
   if (CLOCK_CHANGED || RESET_CHANGED) { 
     targetFile = buildPath(PLAY_BANK, PLAY_CHANNEL);
     PLAY_POSITION = (PLAY_POSITION / 16) * 16; 
+
+    int fadeTime = clockTime;
+    if (fadeTime > skipTransition)
+      fadeTime = skipTransition;
     
     if (fadeSwitch){            
       playRaw2.playFrom(targetFile, PLAY_POSITION);
