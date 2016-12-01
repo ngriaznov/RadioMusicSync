@@ -103,6 +103,14 @@ void AudioPlaySdRaw::stop(void)
 	}
 }
 
+void AudioPlaySdRaw::pause(void) {
+    __disable_irq();
+    if (playing) {
+			playing = false;
+    }
+    __enable_irq();
+}
+
 
 void AudioPlaySdRaw::update(void)
 {

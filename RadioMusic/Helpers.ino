@@ -77,7 +77,7 @@ void readSDSettings() {
   char character;
   String settingName;
   String settingValue;
-  settingsFile = SD.open("settings.txt");
+  File settingsFile = SD.open("settings.txt");
   if (settingsFile) {
     while (settingsFile.available()) {
       character = settingsFile.read();
@@ -108,8 +108,7 @@ void readSDSettings() {
     // close the file:
     settingsFile.close();
   } else {
-    // if the file didn't open, print an error:
-    Serial.println("error opening settings.txt");
+    // error
   }
 }
 /* Apply the value to the parameter by searching for the parameter name
@@ -118,9 +117,6 @@ void readSDSettings() {
   toBoolean(string); for Boolean
 */
 void applySetting(String settingName, String settingValue) {
-  if (settingName == "MUTE") {
-    MUTE = toBoolean(settingValue);
-  }
 
   if (settingName == "DECLICK") {
     DECLICK = settingValue.toInt();
@@ -152,7 +148,6 @@ void applySetting(String settingName, String settingValue) {
 
   if (settingName == "StartCVDivider") {
     StartCVDivider = settingValue.toInt();
-    ;
   }
 
   if (settingName == "Looping") {
@@ -183,10 +178,8 @@ boolean toBoolean(String settingValue) {
 // Writes A Configuration file
 void writeSDSettings() {
   // Create new one
-  settingsFile = SD.open("settings.txt", FILE_WRITE);
+  File settingsFile = SD.open("settings.txt", FILE_WRITE);
   // writing in the file works just like regular print()/println() function
-  settingsFile.print("MUTE=");
-  settingsFile.println(MUTE);
   settingsFile.print("DECLICK=");
   settingsFile.println(DECLICK);
   settingsFile.print("ShowMeter=");
@@ -210,6 +203,5 @@ void writeSDSettings() {
   
   // close the file:
   settingsFile.close();
-  // Serial.println("Writing done.");
 }
 

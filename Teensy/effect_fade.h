@@ -24,33 +24,33 @@
  * THE SOFTWARE.
  */
 
-#ifndef play_sd_raw_h_
-#define play_sd_raw_h_
+#ifndef effect_fade_h_
+#define effect_fade_h_
 
 #include "AudioStream.h"
-#include "SD.h"
 
-class AudioPlaySdRaw : public AudioStream
+class AudioEffectFade : public AudioStream
 {
 public:
-	AudioPlaySdRaw(void) : AudioStream(0, NULL) { begin(); }
-	void begin(void);
-	bool play(const char *filename);
-	bool playFrom(const char *filename, unsigned long start);
-	bool playFrom(unsigned long start);
-	void stop(void);
-	void pause(void);
-	bool isPlaying(void) { return playing; }
-	uint32_t positionMillis(void);
-	uint32_t lengthMillis(void);
-	uint32_t fileOffset(void);
-    bool failed;
+	AudioEffectFade(void)
+	  : AudioStream(1, inputQueueArray), position(0xFFFFFFFF) {}
+	void fadeIn(uint32_t milliseconds) {
+		uint32_t samples = (uint32_t)(milliseconds * 441u + 5u) / 10u;
+		//Serial.printf("fadeIn, %u samples\n", samples);
+		fadeBegin(0xFFFFFFFFu / samples, 1);
+	}
+	void fadeOut(uint32_t milliseconds) {
+		uint32_t samples = (uint32_t)(milliseconds * 441u + 5u) / 10u;
+		//Serial.printf("fadeOut, %u samples\n", samples);
+		fadeBegin(0xFFFFFFFFu / samples, 0);
+	}
 	virtual void update(void);
+	uint32_t position; // 0 = off, 0xFFFFFFFF = on
 private:
-	File rawfile;
-	uint32_t file_size;
-	volatile uint32_t file_offset;
-	volatile bool playing;
+	void fadeBegin(uint32_t newrate, uint8_t dir);
+	uint32_t rate;
+	uint8_t direction; // 0 = fading out, 1 = fading in
+	audio_block_t *inputQueueArray[1];
 };
 
 #endif

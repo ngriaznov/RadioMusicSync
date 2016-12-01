@@ -1,37 +1,10 @@
-/*
-  RADIO MUSIC SYNC, based on:
-  https://github.com/TomWhitwell/RadioMusic
-
-  Audio out: Onboard DAC, teensy3.1 pin A14/DAC
-
-  Bank Button: 2
-  Bank LEDs 3,4,5,6
-  Reset Button: 8
-  Reset LED 11
-  Reset CV input: 9
-  Channel Pot: A9
-  Channel CV: A8 // check
-  Time Pot: A7
-  Time CV: A6 // check
-  SD Card Connections:
-  SCLK 14
-  MISO 12
-  MOSI 7
-  SS   10
-
-  NB: Compile using modified versions of:
-  SD.cpp (found in the main Arduino package)
-  play_sd_raw.cpp  - In Teensy Audio Library
-  play_sc_raw.h    - In Teensy Audio Library
-
-  from:https://github.com/TomWhitwell/RadioMusic/tree/master/Collateral/Edited%20teensy%20files
-
-*/
 #include <EEPROM.h>
 #include <Bounce.h>
 #include <Audio.h>
 #include <SD.h>
 #include <Wire.h>
+
+#define USE_TEENSY3_OPTIMIZED_CODE
 
 // REBOOT CODES
 #define                     RESTART_ADDR 0xE000ED0C
@@ -63,11 +36,10 @@
 
 #define                     FLASHTIME 10                                  // How long do LEDs flash for?
 #define                     HOLDTIME 400                                  // How many millis to hold a button to get 2ndary function?
+#define                     SAMPLE_AVERAGE 40
 
 // OPTIONS TO READ FROM THE SD CARD, WITH DEFAULT VALUES
-boolean                     MUTE = false;                                 // Softens clicks when changing channel / position, at
-                                                                          // cost of speed. Fade speed is set by DECLICK
-int                         DECLICK = 2;                                  // milliseconds of fade in/out on switching
+int                         DECLICK = 2;                          // milliseconds of fade in/out on switching
 boolean                     ShowMeter = true;                             // Does the VU meter appear?
 int                         meterHIDE = 2000;                             // how long to show the meter after bank change in Milliseconds
 boolean                     ChanPotImmediate = true;                      // Settings for Pot / CV response.
@@ -79,8 +51,6 @@ boolean                     Looping = true;                               // Whe
 int                         currentTimePosition = 0;
 int                         BPM = 130;                                    // Base BPM for loops
 int                         skipTransition = 0;
-
-File                        settingsFile;
 
 AudioMixer4                 mixer;
 AudioPlaySdRaw              playRaw1;  
@@ -97,13 +67,12 @@ AudioConnection             patchCord6(fade2, 0, mixer, 1);
 AudioConnection             patchCord3(mixer, peak1);
 
 int                         ACTIVE_BANKS;
-String                      FILE_TYPE = "RAW";
-String                      FILE_NAMES[BANKS][MAX_FILES];
-String                      FILE_DIRECTORIES[BANKS][MAX_FILES];
-unsigned long               FILE_SIZES[BANKS][MAX_FILES];
-int                         FILE_COUNT[BANKS];
-String                      CURRENT_DIRECTORY = "0";
-File                        root;
+String                      PROGMEM FILE_TYPE = "RAW";
+String                      PROGMEM FILE_NAMES[BANKS][MAX_FILES];
+String                      PROGMEM FILE_DIRECTORIES[BANKS][MAX_FILES];
+unsigned long               PROGMEM FILE_SIZES[BANKS][MAX_FILES];
+int                         PROGMEM FILE_COUNT[BANKS];
+String                      PROGMEM CURRENT_DIRECTORY = "0";
 
 boolean                     CHAN_CHANGED = true;
 boolean                     RESET_CHANGED = false;
@@ -120,14 +89,13 @@ Bounce                      bankSwitch = Bounce(BANK_BUTTON, 20);
 int                         PLAY_BANK = 0;
 
 // CHANGE HOW INTERFACE REACTS
-int                         chanHyst = 3;                                 // how many steps to move before making a change (out of 1024 steps on a reading)
-int                         timHyst = 6;
+const int                   PROGMEM chanHyst = 3;                                 // how many steps to move before making a change (out of 1024 steps on a reading)
+const int                   PROGMEM timHyst = 6;
 
 elapsedMillis               chanChanged;
 elapsedMillis               timChanged;
 elapsedMillis               clockTime;
 
-int                         sampleAverage = 40;
 int                         chanPotOld;
 int                         chanCVOld;
 int                         timPotOld;
@@ -162,7 +130,7 @@ void setup() {
   Serial.begin(38400);
 
   // MEMORY REQUIRED FOR AUDIOCONNECTIONS
-  AudioMemory(24);
+  AudioMemory(10);
   
   // SD CARD SETTINGS FOR AUDIO SHIELD
   SPI.setMOSI(7);
@@ -185,7 +153,7 @@ void setup() {
   mixer.gain(1, 0.7);
 
   // READ SETTINGS FROM SD CARD
-  root = SD.open("/");
+  File root = SD.open("/");
 
   if (SD.exists("settings.txt")) {
     readSDSettings();
@@ -195,6 +163,8 @@ void setup() {
 
   // OPEN SD CARD AND SCAN FILES INTO DIRECTORY ARRAYS
   scanDirectory(root, 0);
+
+  root.close();
 
   // CHECK  FOR SAVED BANK POSITION
   int a = 0;
@@ -209,12 +179,12 @@ void setup() {
   // Add an interrupt on the RESET_CV pin to catch rising edges
   attachInterrupt(RESET_CV, resetcv, RISING);
   attachInterrupt(CHAN_CV_PIN, clockrecieve, RISING);
-
-  // Force read channel
-  CHAN_CHANGED = true;
-  
+ 
   skipTransition = round(44.1 * 30000/BPM); // ((60000/BPM/4)*2 * (44100/1000))
   clockTime = 0;
+
+  // Initial fade
+  fade1.fadeOut(0);
 }
 
 // Called by interrupt on rising edge, for RESET_CV pin
@@ -231,10 +201,27 @@ void loop() {
   if (SYNC_POSITION == 0){
     SYNC_POSITION = currentTimePosition;
   }
+
+  if (fade1.position == 0){
+    playRaw1.pause();
+  }
+
+  if (fade2.position == 0){
+    playRaw2.pause();
+  }
   
-  if (!CLOCK_CHANGED && !RESET_CHANGED && !CHAN_CHANGED && Looping && (!playRaw1.isPlaying() || !playRaw2.isPlaying())) {
-    // Regular "Radio" mode
-    playFrom(0, true);
+  if (!CLOCK_CHANGED && !RESET_CHANGED && !CHAN_CHANGED && Looping) {
+    
+    // Regular "Radio" mode       
+    if (fade1.position > 0 && !playRaw1.isPlaying()){
+      targetFile = buildPath(PLAY_BANK, NEXT_CHANNEL);
+      playRaw1.playFrom(targetFile, 0);
+    }
+    
+    if (fade2.position > 0 && !playRaw2.isPlaying()){
+      targetFile = buildPath(PLAY_BANK, NEXT_CHANNEL);
+      playRaw2.playFrom(targetFile, 0);
+    }
   }
 
   if (CHAN_CHANGED) {
@@ -329,41 +316,33 @@ void playFrom(int playPosition, bool resetFiles){
   if (resetFiles)
     targetFile = buildPath(PLAY_BANK, NEXT_CHANNEL);
       
-  int skipTime = fadeTime * 0.15;
-  if (skipTime < 10)
-      skipTime = 10;
-  
+  int skipTime = fadeTime * 0.1;
+  if (skipTime < 2)
+      skipTime = 2;
+  AudioNoInterrupts();
   if (!fadeSwitch){      
       
       if (resetFiles){
-        AudioNoInterrupts();
+        
         playRaw2.playFrom(targetFile, playPosition);
-        AudioInterrupts();
       }
       else {
-         AudioNoInterrupts();
          playRaw2.playFrom(playPosition);
-         AudioInterrupts();
       }
       
       fade1.fadeOut(skipTime);
       fade2.fadeIn(skipTime);        
     }
     else{
-      
       if (resetFiles){
-        AudioNoInterrupts();
         playRaw1.playFrom(targetFile, playPosition);
-        AudioInterrupts();
       }
       else {
-         AudioNoInterrupts();
          playRaw1.playFrom(playPosition);
-         AudioInterrupts();
       }     
             
       fade2.fadeOut(skipTime);
       fade1.fadeIn(skipTime);        
     }
-  
+  AudioInterrupts();
 }

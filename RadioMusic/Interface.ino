@@ -13,17 +13,17 @@ void checkInterface() {
   int timPot = 0;
   int timCV = 0;
 
-  for (int i = 0; i < sampleAverage; i++) {
+  for (int i = 0; i < SAMPLE_AVERAGE; i++) {
     chanPot += analogRead(CHAN_POT_PIN);
     // chanCV += analogRead(CHAN_CV_PIN);
     timPot += analogRead(TIME_POT_PIN);
     timCV += analogRead(TIME_CV_PIN);
   }
 
-  chanPot = chanPot / sampleAverage;
-  chanCV = chanCV / sampleAverage;
-  timPot = timPot / sampleAverage;
-  timCV = timCV / sampleAverage;
+  chanPot = chanPot / SAMPLE_AVERAGE;
+  chanCV = chanCV / SAMPLE_AVERAGE;
+  timPot = timPot / SAMPLE_AVERAGE;
+  timCV = timCV / SAMPLE_AVERAGE;
 
   // IDENTIFY POT / CV CHANGES
 
