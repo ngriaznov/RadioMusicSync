@@ -19,7 +19,7 @@ teensy31.build.command.ar=arm-none-eabi-ar
 teensy31.build.command.objcopy=arm-none-eabi-objcopy
 teensy31.build.command.objdump=arm-none-eabi-objdump
 teensy31.build.command.size=arm-none-eabi-size
-teensy31.build.flags.common=-g -Wall -ffunction-sections -fdata-sections -nostdlib -fpermissive
+teensy31.build.flags.common=-g -Wall -ffunction-sections -fdata-sections -nostdlib
 teensy31.build.flags.dep=-MMD
 teensy31.build.flags.optimize=-Os
 teensy31.build.flags.cpu=-mthumb -mcpu=cortex-m4 -fsingle-precision-constant

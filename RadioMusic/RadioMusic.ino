@@ -30,7 +30,6 @@
 #include <EEPROM.h>
 #include <Bounce.h>
 #include <Audio.h>
-#include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
 
@@ -115,7 +114,6 @@ unsigned long               SYNC_POSITION = 0;
 Bounce                      resetSwitch = Bounce(RESET_BUTTON, 20);       // Bounce setup for Reset
 int                         PLAY_CHANNEL;
 int                         NEXT_CHANNEL;
-unsigned long               playhead;
 char                        *targetFile;
 
 Bounce                      bankSwitch = Bounce(BANK_BUTTON, 20);
@@ -271,12 +269,14 @@ void loop() {
     // Update synchronization position with current playing position
     SYNC_POSITION = PLAY_POSITION;
 
-    // 
+    // Relese the reset routine
     RESET_CHANGED = false;
 
+    // Actually play files
     playFrom(PLAY_POSITION, true);  
-    
-    resetLedTimer = 0;  // turn on Reset LED
+
+    // Turn on Reset LED
+    resetLedTimer = 0;  
   }
   
   if (CLOCK_CHANGED) { 
@@ -332,13 +332,6 @@ void playFrom(int playPosition, bool resetFiles){
   int skipTime = fadeTime * 0.15;
   if (skipTime < 10)
       skipTime = 10;
-
-  //if (resetFiles){
-  //    AudioNoInterrupts();
-  //    playRaw1.playFrom(targetFile, playPosition);
-  //    playRaw2.playFrom(targetFile, playPosition);
-  //    AudioInterrupts();
-  //}
   
   if (!fadeSwitch){      
       
@@ -361,7 +354,6 @@ void playFrom(int playPosition, bool resetFiles){
       if (resetFiles){
         AudioNoInterrupts();
         playRaw1.playFrom(targetFile, playPosition);
-        //playRaw2.playFrom(targetFile, playPosition);
         AudioInterrupts();
       }
       else {
