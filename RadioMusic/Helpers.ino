@@ -44,75 +44,9 @@ char* buildPath(int bank, int channel) {
   return filename;
 }
 
-char* buildSecondPath(int bank, int channel) {
-  String liveFilename = "C/";
-  liveFilename += bank;
-  liveFilename += "/";
-  liveFilename += FILE_NAMES[bank][channel];
-  char filename[liveFilename.length() + 1];
-  liveFilename.toCharArray(filename, sizeof(filename));
-  return filename;
-}
-
 void reBoot() {
   delay(500);
   WRITE_RESTART(0x5FA0004);
-}
-
-//////////////////////////////////////////////
-////////VARIOUS DEBUG DISPLAY FUNCTIONS //////
-//////////////////////////////////////////////
-
-// SHOW CURRENTLY PLAYING TRACK IN SERIAL MONITOR
-void whatsPlaying() {
-  Serial.print("Bank:");
-  Serial.print(PLAY_BANK);
-  Serial.print(" Channel:");
-  Serial.print(PLAY_CHANNEL);
-  Serial.print(" File:");
-  Serial.println(targetFile);
-}
-
-void printFileList() {
-  for (int x = 0; x < BANKS; x++) {
-    Serial.print("Bank: ");
-    Serial.println(x);
-
-    Serial.print(FILE_COUNT[x]);
-    Serial.print(" ");
-    Serial.print(FILE_TYPE);
-    Serial.println(" Files found");
-
-    for (int i = 0; i < FILE_COUNT[x]; i++) {
-      Serial.print(i);
-      Serial.print(") ");
-      Serial.print(FILE_DIRECTORIES[x][i]);
-      Serial.print(" | ");
-      Serial.print(FILE_NAMES[x][i]);
-      Serial.print(" | ");
-      Serial.print(FILE_SIZES[x][i]);
-      Serial.println(" | ");
-    }
-  }
-}
-
-void printSettings() {
-  Serial.print("MUTE=");
-  Serial.println(MUTE);
-  Serial.print("DECLICK=");
-  Serial.println(DECLICK);
-  Serial.print("ShowMeter=");
-  Serial.println(ShowMeter);
-  Serial.print("meterHIDE=");
-  Serial.println(meterHIDE);
-  Serial.print("ChanPotImmediate=");
-  Serial.println(ChanPotImmediate);
-  Serial.print("ChanCVImmediate=");
-  Serial.println(ChanCVImmediate);
-  Serial.print("StartPotImmediate=");
-  Serial.println(StartPotImmediate);
-  Serial.print("StartCVImmediate=");
-  Serial.println(StartCVImmediate);
 }
 
 // DISPLAY PEAK METER IN LEDS

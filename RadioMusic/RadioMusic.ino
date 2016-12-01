@@ -164,7 +164,8 @@ void setup() {
   Serial.begin(38400);
 
   // MEMORY REQUIRED FOR AUDIOCONNECTIONS
-  AudioMemory(7);
+  AudioMemory(24);
+  
   // SD CARD SETTINGS FOR AUDIO SHIELD
   SPI.setMOSI(7);
   SPI.setSCK(14);
@@ -211,9 +212,9 @@ void setup() {
   attachInterrupt(RESET_CV, resetcv, RISING);
   attachInterrupt(CHAN_CV_PIN, clockrecieve, RISING);
 
-  // Silence second player for now
-  fade1.fadeOut(2);
-
+  // Force read channel
+  CHAN_CHANGED = true;
+  
   skipTransition = round(44.1 * 30000/BPM); // ((60000/BPM/4)*2 * (44100/1000))
   clockTime = 0;
 }
@@ -233,69 +234,63 @@ void loop() {
     SYNC_POSITION = currentTimePosition;
   }
   
-  if (!playRaw1.isPlaying() && Looping) {
-    targetFile = buildPath(PLAY_BANK, PLAY_CHANNEL);
-    playRaw1.playFrom(targetFile, 0);
-  }
-
-  if (!playRaw2.isPlaying() && Looping) {
-    targetFile = buildPath(PLAY_BANK, PLAY_CHANNEL);
-    playRaw2.playFrom(targetFile, 0);       
-  }
-
-  resetLedTimer = 0;  
-
-  if (playRaw1.failed) {
-    reBoot();
+  if (!CLOCK_CHANGED && !RESET_CHANGED && !CHAN_CHANGED && Looping && (!playRaw1.isPlaying() || !playRaw2.isPlaying())) {
+    // Regular "Radio" mode
+    playFrom(0, true);
   }
 
   if (CHAN_CHANGED) {
-    targetFile = buildPath(PLAY_BANK, NEXT_CHANNEL);
-    PLAY_CHANNEL = NEXT_CHANNEL;
+    PLAY_CHANNEL = NEXT_CHANNEL;   
+         
+    if (Looping){
 
-    if (RESET_CHANGED == false && Looping)
+      // Preserve selected pot play position
       PLAY_POSITION = currentTimePosition;  
-      PLAY_POSITION = (PLAY_POSITION / 16) * 16; 
-     
-      playRaw1.playFrom(targetFile, PLAY_POSITION);        // change audio
-      playRaw2.playFrom(targetFile, PLAY_POSITION);        // change audio
+      
+      playFrom(PLAY_POSITION, true);  
 
+      // Show ti the user
       ledWrite(PLAY_BANK);
+
+      // No need for further processing of channel changed loop
       CHAN_CHANGED = false;
-      resetLedTimer = 0;  // turn on Reset LED
+
+      // We need to reset whats playing
+      RESET_CHANGED = true;
+
+      // turn on Reset LED
+      resetLedTimer = 0;  
+    }
   }
 
   if (RESET_CHANGED){
+    
+    // Preserve selected pot play position
     PLAY_POSITION = currentTimePosition;  
+
+    // Update synchronization position with current playing position
     SYNC_POSITION = PLAY_POSITION;
+
+    // 
     RESET_CHANGED = false;
+
+    playFrom(PLAY_POSITION, true);  
+    
+    resetLedTimer = 0;  // turn on Reset LED
   }
   
-  if (CLOCK_CHANGED || RESET_CHANGED) { 
-    targetFile = buildPath(PLAY_BANK, PLAY_CHANNEL);
-    PLAY_POSITION = (PLAY_POSITION / 16) * 16; 
+  if (CLOCK_CHANGED) { 
+    playFrom(PLAY_POSITION, false);     
 
-    int fadeTime = clockTime;
-    if (fadeTime > skipTransition)
-      fadeTime = skipTransition;
-    
-    if (fadeSwitch){            
-      playRaw2.playFrom(targetFile, PLAY_POSITION);
-      fade1.fadeOut(clockTime * 0.1);
-      fade2.fadeIn(clockTime * 0.1);          
-    }
-    else {
-      playRaw1.playFrom(targetFile, PLAY_POSITION);
-      fade1.fadeIn(clockTime * 0.1);
-      fade2.fadeOut(clockTime * 0.1);
-    }
-
-    fadeSwitch = !fadeSwitch;
+    // Advance position
     SYNC_POSITION += skipTransition;
-    
     PLAY_POSITION = SYNC_POSITION; 
+
+    // Reset clocking
     CLOCK_CHANGED = false;
     RESET_CHANGED = false;
+
+    // Reset time
     clockTime = 0;
   }
 
@@ -314,3 +309,69 @@ void loop() {
     peakMeter();  // CALL PEAK METER
 }
 
+void playFrom(int playPosition, bool resetFiles){
+  
+  // Scale playhead
+  playPosition = (playPosition / 16) * 16;
+
+  // Flip the switch  
+  fadeSwitch = !fadeSwitch; 
+  
+  int fadeTime = clockTime;
+  if (fadeTime > skipTransition) {
+      // There was no clock for a long time
+      // so we need to synchronise files
+      resetFiles = true;
+      fadeTime = skipTransition;
+  }
+
+  // Build path if needed
+  if (resetFiles)
+    targetFile = buildPath(PLAY_BANK, NEXT_CHANNEL);
+      
+  int skipTime = fadeTime * 0.15;
+  if (skipTime < 10)
+      skipTime = 10;
+
+  //if (resetFiles){
+  //    AudioNoInterrupts();
+  //    playRaw1.playFrom(targetFile, playPosition);
+  //    playRaw2.playFrom(targetFile, playPosition);
+  //    AudioInterrupts();
+  //}
+  
+  if (!fadeSwitch){      
+      
+      if (resetFiles){
+        AudioNoInterrupts();
+        playRaw2.playFrom(targetFile, playPosition);
+        AudioInterrupts();
+      }
+      else {
+         AudioNoInterrupts();
+         playRaw2.playFrom(playPosition);
+         AudioInterrupts();
+      }
+      
+      fade1.fadeOut(skipTime);
+      fade2.fadeIn(skipTime);        
+    }
+    else{
+      
+      if (resetFiles){
+        AudioNoInterrupts();
+        playRaw1.playFrom(targetFile, playPosition);
+        //playRaw2.playFrom(targetFile, playPosition);
+        AudioInterrupts();
+      }
+      else {
+         AudioNoInterrupts();
+         playRaw1.playFrom(playPosition);
+         AudioInterrupts();
+      }     
+            
+      fade2.fadeOut(skipTime);
+      fade1.fadeIn(skipTime);        
+    }
+  
+}
