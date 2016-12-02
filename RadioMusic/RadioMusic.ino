@@ -1,15 +1,12 @@
 #include <EEPROM.h>
 #include <Bounce.h>
 #include <Audio.h>
-#include <SD.h>
-#include <Wire.h>
 
 #define USE_TEENSY3_OPTIMIZED_CODE
 
 // REBOOT CODES
 #define                     RESTART_ADDR 0xE000ED0C
-#define                     READ_RESTART() (*(volatile uint32_t *)RESTART_ADDR)
-#define                     WRITE_RESTART(val) ((*(volatile uint32_t *)RESTART_ADDR) = (val))
+#define                     WRITE_RESTART(val) ((*(volatile uint8_t *)RESTART_ADDR) = (val))
 
 // SETUP VARS TO STORE DETAILS OF FILES ON THE SD CARD
 #define                     MAX_FILES 75
@@ -67,18 +64,18 @@ AudioConnection             patchCord6(fade2, 0, mixer, 1);
 AudioConnection             patchCord3(mixer, peak1);
 
 int                         ACTIVE_BANKS;
-String                      PROGMEM FILE_TYPE = "RAW";
-String                      PROGMEM FILE_NAMES[BANKS][MAX_FILES];
-String                      PROGMEM FILE_DIRECTORIES[BANKS][MAX_FILES];
-unsigned long               PROGMEM FILE_SIZES[BANKS][MAX_FILES];
-int                         PROGMEM FILE_COUNT[BANKS];
-String                      PROGMEM CURRENT_DIRECTORY = "0";
+String                      FILE_TYPE = "RAW";
+String                      FILE_NAMES[BANKS][MAX_FILES];
+String                      FILE_DIRECTORIES[BANKS][MAX_FILES];
+unsigned long               FILE_SIZES[BANKS][MAX_FILES];
+int                         FILE_COUNT[BANKS];
+String                      CURRENT_DIRECTORY = "0";
 
 boolean                     CHAN_CHANGED = true;
 boolean                     RESET_CHANGED = false;
 boolean                     CLOCK_CHANGED = false;
-unsigned long               PLAY_POSITION = 0;
-unsigned long               SYNC_POSITION = 0;
+long                        PLAY_POSITION = 0;
+long                        SYNC_POSITION = 0;
 
 Bounce                      resetSwitch = Bounce(RESET_BUTTON, 20);       // Bounce setup for Reset
 int                         PLAY_CHANNEL;
@@ -89,12 +86,13 @@ Bounce                      bankSwitch = Bounce(BANK_BUTTON, 20);
 int                         PLAY_BANK = 0;
 
 // CHANGE HOW INTERFACE REACTS
-const int                   PROGMEM chanHyst = 3;                                 // how many steps to move before making a change (out of 1024 steps on a reading)
-const int                   PROGMEM timHyst = 6;
+const int                   chanHyst = 3;                                 // how many steps to move before making a change (out of 1024 steps on a reading)
+const int                   timHyst = 6;
 
 elapsedMillis               chanChanged;
 elapsedMillis               timChanged;
 elapsedMillis               clockTime;
+elapsedMillis               resetElapsed;
 
 int                         chanPotOld;
 int                         chanCVOld;
@@ -182,7 +180,8 @@ void setup() {
  
   skipTransition = round(44.1 * 30000/BPM); // ((60000/BPM/4)*2 * (44100/1000))
   clockTime = 0;
-
+  resetElapsed = 0;
+  
   // Initial fade
   fade1.fadeOut(0);
 }
@@ -232,6 +231,9 @@ void loop() {
       // Preserve selected pot play position
       PLAY_POSITION = currentTimePosition;  
       
+      // Update synchronization position with current playing position
+      SYNC_POSITION = PLAY_POSITION;
+      
       playFrom(PLAY_POSITION, true);  
 
       // Show ti the user
@@ -249,51 +251,58 @@ void loop() {
   }
 
   if (RESET_CHANGED){
-    
-    // Preserve selected pot play position
-    PLAY_POSITION = currentTimePosition;  
 
-    // Update synchronization position with current playing position
-    SYNC_POSITION = PLAY_POSITION;
+    if (resetElapsed > 10){
+      // Preserve selected pot play position
+      PLAY_POSITION = currentTimePosition;  
+  
+      // Update synchronization position with current playing position
+      SYNC_POSITION = PLAY_POSITION;
+  
+      // Relese the reset routine
+      RESET_CHANGED = false;
+  
+      // Actually play files
+      playFrom(PLAY_POSITION, true);  
+  
+      // Turn on Reset LED
+      resetLedTimer = 0;  
 
-    // Relese the reset routine
-    RESET_CHANGED = false;
-
-    // Actually play files
-    playFrom(PLAY_POSITION, true);  
-
-    // Turn on Reset LED
-    resetLedTimer = 0;  
+      // Turn down reset elapsed timer
+      resetElapsed = 0;
+    }
   }
   
   if (CLOCK_CHANGED) { 
-    playFrom(PLAY_POSITION, false);     
-
-    // Advance position
-    SYNC_POSITION += skipTransition;
-    PLAY_POSITION = SYNC_POSITION; 
-
-    // Reset clocking
-    CLOCK_CHANGED = false;
-    RESET_CHANGED = false;
-
-    // Reset time
-    clockTime = 0;
+    if (clockTime > 10){
+      playFrom(PLAY_POSITION, false);     
+  
+      // Advance position
+      SYNC_POSITION += skipTransition;
+      PLAY_POSITION = SYNC_POSITION; 
+  
+      // Reset clocking
+      CLOCK_CHANGED = false;
+      RESET_CHANGED = false;
+  
+      // Reset time
+      clockTime = 0;
+    }
   }
-
+  
   if (checkI >= checkFreq) {
-    checkInterface();
-    checkI = 0;
+      checkInterface();
+      checkI = 0;
   }
-
+  
   if (showDisplay > showFreq) {
-    showDisplay = 0;
+      showDisplay = 0;
   }
-
+  
   digitalWrite(RESET_LED, resetLedTimer < FLASHTIME);  // flash reset LED
-
+  
   if (fps > 1000 / peakFPS && meterDisplay > meterHIDE && ShowMeter)
-    peakMeter();  // CALL PEAK METER
+      peakMeter();  // CALL PEAK METER  
 }
 
 void playFrom(int playPosition, bool resetFiles){
@@ -316,18 +325,21 @@ void playFrom(int playPosition, bool resetFiles){
   if (resetFiles)
     targetFile = buildPath(PLAY_BANK, NEXT_CHANNEL);
       
-  int skipTime = fadeTime * 0.1;
+  int skipTime = fadeTime * 0.15;
   if (skipTime < 2)
       skipTime = 2;
-  AudioNoInterrupts();
+  
   if (!fadeSwitch){      
       
       if (resetFiles){
-        
+        AudioNoInterrupts();
         playRaw2.playFrom(targetFile, playPosition);
+        AudioInterrupts();
       }
       else {
+         AudioNoInterrupts();
          playRaw2.playFrom(playPosition);
+         AudioInterrupts();
       }
       
       fade1.fadeOut(skipTime);
@@ -335,14 +347,17 @@ void playFrom(int playPosition, bool resetFiles){
     }
     else{
       if (resetFiles){
+        AudioNoInterrupts();
         playRaw1.playFrom(targetFile, playPosition);
+        AudioInterrupts();
       }
       else {
+         AudioNoInterrupts();
          playRaw1.playFrom(playPosition);
+         AudioInterrupts();
       }     
             
       fade2.fadeOut(skipTime);
       fade1.fadeIn(skipTime);        
-    }
-  AudioInterrupts();
+    }  
 }
