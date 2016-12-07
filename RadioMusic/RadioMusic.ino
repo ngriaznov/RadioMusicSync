@@ -47,7 +47,7 @@ int                         StartCVDivider = 2;                           // Cha
 boolean                     Looping = true;                               // When a file finishes, start again from the beginning
 int                         currentTimePosition = 0;
 int                         BPM = 130;                                    // Base BPM for loops
-int                         skipTransition = 0;
+unsigned long               skipTransition = 0;
 
 AudioMixer4                 mixer;
 AudioPlaySdRaw              playRaw1;  
@@ -74,8 +74,8 @@ String                      CURRENT_DIRECTORY = "0";
 boolean                     CHAN_CHANGED = true;
 boolean                     RESET_CHANGED = false;
 boolean                     CLOCK_CHANGED = false;
-long                        PLAY_POSITION = 0;
-long                        SYNC_POSITION = 0;
+unsigned long               PLAY_POSITION = 0;
+unsigned long               SYNC_POSITION = 0;
 
 Bounce                      resetSwitch = Bounce(RESET_BUTTON, 20);       // Bounce setup for Reset
 int                         PLAY_CHANNEL;
@@ -200,26 +200,22 @@ void loop() {
   if (SYNC_POSITION == 0){
     SYNC_POSITION = currentTimePosition;
   }
-
-  if (fade1.position == 0){
-    playRaw1.pause();
-  }
-
-  if (fade2.position == 0){
-    playRaw2.pause();
-  }
-  
+ 
   if (!CLOCK_CHANGED && !RESET_CHANGED && !CHAN_CHANGED && Looping) {
     
     // Regular "Radio" mode       
     if (fade1.position > 0 && !playRaw1.isPlaying()){
       targetFile = buildPath(PLAY_BANK, NEXT_CHANNEL);
+      AudioNoInterrupts();
       playRaw1.playFrom(targetFile, 0);
+      AudioInterrupts();
     }
     
     if (fade2.position > 0 && !playRaw2.isPlaying()){
       targetFile = buildPath(PLAY_BANK, NEXT_CHANNEL);
+      AudioNoInterrupts();
       playRaw2.playFrom(targetFile, 0);
+      AudioInterrupts();
     }
   }
 
